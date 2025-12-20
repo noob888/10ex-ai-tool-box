@@ -4,7 +4,7 @@ import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { Category } from '@/types';
 
 type Props = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 // Map slugs to keywords
@@ -64,7 +64,8 @@ function getFilteredToolsForSEO(keyword: string, allTools: any[]): any[] {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const keyword = slugToKeyword[params.slug] || params.slug.replace(/-/g, ' ');
+  const { slug } = await params;
+  const keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
   
   return {
@@ -81,7 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `Best ${keyword} for 2025`,
       description: `Discover the best ${keyword.toLowerCase()} in 2025. We've audited 600+ AI tools to bring you the top performing options.`,
       type: 'website',
-      url: `${baseUrl}/seo/${params.slug}`,
+      url: `${baseUrl}/seo/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -89,13 +90,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `Discover the best ${keyword.toLowerCase()} in 2025.`,
     },
     alternates: {
-      canonical: `${baseUrl}/seo/${params.slug}`,
+      canonical: `${baseUrl}/seo/${slug}`,
     },
   };
 }
 
 export default async function SEOPage({ params }: Props) {
-  const keyword = slugToKeyword[params.slug] || params.slug.replace(/-/g, ' ');
+  const { slug } = await params;
+  const keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
   const toolsRepo = new ToolsRepository();
   const allTools = await toolsRepo.findAll();
   const filteredTools = getFilteredToolsForSEO(keyword, allTools);

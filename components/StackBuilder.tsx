@@ -1,3 +1,4 @@
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Tool } from '../types';
@@ -44,14 +45,6 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500 pt-8 max-w-7xl mx-auto items-start">
-      {/* #region agent log */}
-      {(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/282783f3-1adb-4f2c-8dfb-b84639e0aa7b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StackBuilder.tsx:32',message:'StackBuilder render - checking RHS visibility',data:{selectedToolsCount:selectedTools.length,windowWidth:typeof window !== 'undefined' ? window.innerWidth : 0,isMobile:typeof window !== 'undefined' ? window.innerWidth < 1024 : false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
-        return null;
-      })()}
-      {/* #endregion */}
       {/* RHS on Mobile: Show stack at the top or bottom. Here we stack it normally but use 'order' if needed. */}
       {/* For mobile UX, having the current stack accessible is key. Let's place it at the top for small screens. */}
       <div className="lg:col-span-4 lg:order-2 order-1 lg:sticky lg:top-20 z-10">

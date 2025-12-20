@@ -1,3 +1,4 @@
+'use client';
 
 import React, { useState } from 'react';
 import { User, ThumbsUp, MessageSquare, Share2, Plus, Zap, Filter } from 'lucide-react';

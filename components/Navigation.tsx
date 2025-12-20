@@ -1,3 +1,4 @@
+'use client';
 
 import React, { useState } from 'react';
 import { Box, Zap, LayoutGrid, Award, MessageSquare, BookOpen, ShieldCheck, Menu, X, Flame } from 'lucide-react';
