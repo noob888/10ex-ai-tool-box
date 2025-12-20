@@ -1,0 +1,574 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Navigation } from './components/Navigation';
+import { ToolCard } from './components/ToolCard';
+import { ChatInterface } from './components/ChatInterface';
+import { StackBuilder } from './components/StackBuilder';
+import { PromptLibrary } from './components/PromptLibrary';
+import { SEOSection } from './components/SEOPages';
+import { toolsDataset, promptsDataset } from './data/toolsData';
+import { Category, Tool, User } from './types';
+import { 
+  Search, TrendingUp, X, Copy, Rocket, Box, Zap, 
+  ThumbsUp, Award, ArrowRight, Flame, ArrowUpRight, Star, Gift, UserPlus, Heart, Globe, ExternalLink
+} from 'lucide-react';
+
+const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('discover');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
+  const [fatigueMode, setFatigueMode] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
+  const [heroQuery, setHeroQuery] = useState('');
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showViralModal, setShowViralModal] = useState(false);
+  const [showCategorySidebar, setShowCategorySidebar] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [seoTarget, setSeoTarget] = useState<{ keyword: string, toolId?: string } | null>(null);
+
+  // URL Sync for SEO
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) {
+      const keyword = q.replace(/-/g, ' ');
+      setSeoTarget({ keyword });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (seoTarget) {
+      const slug = seoTarget.keyword.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      window.history.pushState({ seo: true }, '', `?q=${slug}`);
+      window.scrollTo(0, 0);
+    } else {
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.has('q')) {
+        window.history.pushState({}, '', window.location.pathname);
+      }
+    }
+  }, [seoTarget]);
+
+  const trendingNews = [
+    { id: 1, title: "Gemini 3 Pro sets new benchmarks in tool reasoning.", source: "AI Insights Daily", time: "2h ago" },
+    { id: 2, title: "Why open-source models are winning the 'AI Tool Comparison' wars.", source: "TechCrunch", time: "5h ago" },
+    { id: 3, title: "10ex.ai releases new autonomous agent architecture for founders.", source: "Founder Hub", time: "1d ago" },
+  ];
+
+  const categories = Object.values(Category);
+
+  const filteredTools = useMemo(() => {
+    let result = toolsDataset;
+    if (selectedCategory !== 'All') result = result.filter(t => t.category === selectedCategory);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(t => t.name.toLowerCase().includes(q) || t.tagline.toLowerCase().includes(q));
+    }
+    if (fatigueMode) {
+      return result.sort((a,b) => b.rating - a.rating).slice(0, 12);
+    }
+    return result.sort((a, b) => b.votes - a.votes);
+  }, [searchQuery, selectedCategory, fatigueMode]);
+
+  const trendingTools = useMemo(() => {
+    return toolsDataset.sort((a, b) => b.popularity - a.popularity).slice(0, 8);
+  }, []);
+
+  const handleHeroSubmit = () => {
+    if (!heroQuery.trim()) return;
+    setActiveTab('chat');
+  };
+
+  const handleAction = (action: () => void) => {
+    if (!user) {
+      setShowAuthModal(true);
+    } else {
+      action();
+    }
+  };
+
+  const handleLike = (tool: Tool) => {
+    handleAction(() => {
+      if (!user) return;
+      setUser({
+        ...user,
+        likedToolIds: user.likedToolIds.includes(tool.id) 
+          ? user.likedToolIds.filter(id => id !== tool.id)
+          : [...user.likedToolIds, tool.id],
+        points: user.points + 2
+      });
+    });
+  };
+
+  const handleStar = (tool: Tool) => {
+    handleAction(() => {
+      if (!user) return;
+      setUser({
+        ...user,
+        starredToolIds: user.starredToolIds.includes(tool.id) 
+          ? user.starredToolIds.filter(id => id !== tool.id)
+          : [...user.starredToolIds, tool.id],
+        points: user.points + 2
+      });
+    });
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUser({
+      id: 'u-' + Math.random().toString(36).substr(2, 9),
+      name: 'Alpha User',
+      email: 'user@ecosystem.io',
+      points: 100,
+      referralCode: 'BETA-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
+      joinedAt: new Date().toISOString(),
+      bookmarkedToolIds: [],
+      likedToolIds: [],
+      starredToolIds: []
+    });
+    setShowAuthModal(false);
+    setShowViralModal(true);
+  };
+
+  const renderContent = () => {
+    if (seoTarget) {
+      const targetTool = toolsDataset.find(t => t.id === seoTarget.toolId);
+      const alternatives = toolsDataset.filter(t => t.category === (targetTool?.category || Category.WRITING)).slice(0, 8);
+      return (
+        <SEOSection 
+          keyword={seoTarget.keyword}
+          targetTool={targetTool}
+          alternatives={alternatives}
+          onBack={() => setSeoTarget(null)}
+          onToolClick={setSelectedTool}
+          onVote={() => handleAction(() => setShowLeadModal(true))}
+        />
+      );
+    }
+
+    switch (activeTab) {
+      case 'chat':
+        return (
+          <ChatInterface 
+            tools={toolsDataset} 
+            initialQuery={heroQuery} 
+            onBack={() => setActiveTab('discover')}
+            onToolClick={setSelectedTool}
+            onVote={() => handleAction(() => setShowLeadModal(true))}
+          />
+        );
+      case 'trending':
+        return (
+          <div className="space-y-16 animate-in fade-in duration-500 max-w-5xl mx-auto pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
+              <div className="md:col-span-8 space-y-8">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black flex items-center gap-3"><Flame className="text-orange-500" /> Viral Assets</h2>
+                  <p className="text-[#888] text-sm font-medium">Most shared and upvoted AI tool directory listings this week.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {trendingTools.slice(0, 6).map(tool => (
+                    <ToolCard 
+                      key={tool.id} 
+                      tool={tool} 
+                      isLiked={user?.likedToolIds.includes(tool.id)}
+                      isStarred={user?.starredToolIds.includes(tool.id)}
+                      onClick={setSelectedTool} 
+                      onVote={() => handleAction(() => setShowLeadModal(true))}
+                      onLike={handleLike}
+                      onStar={handleStar}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className="md:col-span-4 space-y-8">
+                <div className="space-y-2">
+                  <h2 className="text-xl font-black flex items-center gap-3"><TrendingUp size={20} /> News Feed</h2>
+                  <p className="text-[#888] text-xs font-medium uppercase tracking-widest">Real-time Space Updates</p>
+                </div>
+                <div className="space-y-4">
+                  {trendingNews.map(item => (
+                    <div key={item.id} className="p-4 rounded-lg bg-[#0a0a0a] border border-[#1f1f1f] hover:border-[#333] transition-all cursor-pointer group">
+                      <p className="text-xs font-bold text-[#eee] group-hover:text-white mb-2 leading-relaxed">{item.title}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-[#444] font-black uppercase tracking-tighter">{item.source}</span>
+                        <span className="text-[10px] text-[#444] font-black uppercase tracking-tighter">{item.time}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'leaderboards':
+        return (
+          <div className="space-y-12 animate-in fade-in duration-500 max-w-5xl mx-auto pt-8">
+            <div className="space-y-2">
+              <h2 className="text-3xl font-black flex items-center gap-3"><Award className="text-yellow-500" /> AI Tool Ranking Site</h2>
+              <p className="text-[#888] text-sm font-medium">Best AI tools 2025 based on audited performance metrics.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {categories.map(cat => (
+                <div key={cat} className="bg-[#0a0a0a] p-6 rounded-lg border border-[#1f1f1f]">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#444] mb-6">{cat}</h3>
+                  <div className="space-y-3">
+                    {toolsDataset.filter(t => t.category === cat).sort((a,b) => b.rating - a.rating).slice(0, 5).map((t, i) => (
+                      <div key={t.id} className="flex items-center gap-4 p-3 rounded hover:bg-[#111] cursor-pointer group transition-all" onClick={() => setSelectedTool(t)}>
+                        <span className="text-[10px] font-black text-[#222] w-4">0{i+1}</span>
+                        <p className="text-xs font-bold text-[#666] flex-1 group-hover:text-white">{t.name}</p>
+                        <p className="text-[10px] font-black text-electric-blue">{t.rating}%</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      case 'stack':
+        return (
+          <StackBuilder 
+            tools={toolsDataset} 
+            onToolClick={setSelectedTool} 
+            onVote={() => handleAction(() => setShowLeadModal(true))}
+            onLike={handleLike}
+            onStar={handleStar}
+          />
+        );
+      case 'prompts':
+        return <PromptLibrary prompts={promptsDataset} />;
+      default:
+        return (
+          <div className={`space-y-12 animate-in fade-in duration-500 max-w-6xl mx-auto ${fatigueMode ? 'pt-8' : ''}`}>
+            {!fatigueMode && (
+              <div className="relative space-y-6 py-12 text-center border-b border-[#1f1f1f]">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                  <span className="gradient-text">Find Your Next 10x Edge.</span>
+                </h1>
+                <p className="text-[#888] text-sm md:text-base max-w-xl mx-auto font-medium">
+                  The definitive <span className="text-white">AI tool directory</span> curated for solo-hackers.
+                </p>
+                <div className="max-w-xl mx-auto relative pt-4">
+                  <div className="relative bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-1 flex items-center focus-within:border-[#333] transition-colors">
+                    <input 
+                      type="text" 
+                      placeholder="Search AI tool directory..."
+                      className="flex-1 bg-transparent py-2.5 px-4 focus:outline-none text-sm placeholder:text-[#444]"
+                      value={heroQuery}
+                      onChange={(e) => setHeroQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleHeroSubmit()}
+                    />
+                    <button onClick={handleHeroSubmit} className="bg-white text-black px-4 py-2 rounded text-xs font-bold hover:bg-[#eee] transition-all flex items-center gap-2">
+                      Scan <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div className="relative flex-1 w-full max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" size={16} />
+                  <input 
+                    type="text" 
+                    placeholder="Search tools..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#1f1f1f] rounded py-2 pl-10 pr-4 focus:outline-none focus:border-[#333] transition-all text-sm"
+                  />
+                </div>
+                {!fatigueMode && (
+                  <div className="flex gap-2 overflow-x-auto w-full md:w-auto scrollbar-hide">
+                    {['All', ...categories.slice(0, 5)].map(cat => (
+                      <button 
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat as any)}
+                        className={`px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest border transition-all whitespace-nowrap ${selectedCategory === cat ? 'bg-white text-black' : 'border-[#1f1f1f] text-[#666] hover:text-white'}`}
+                      >
+                        {cat === 'All' ? 'All' : cat.split(' ')[0]}
+                      </button>
+                    ))}
+                    <button onClick={() => setShowCategorySidebar(true)} className="px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest text-electric-blue border border-electric-blue/20 hover:bg-electric-blue/5">
+                      All Categories
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredTools.map(tool => (
+                  <ToolCard 
+                    key={tool.id} 
+                    tool={tool} 
+                    isLiked={user?.likedToolIds.includes(tool.id)}
+                    isStarred={user?.starredToolIds.includes(tool.id)}
+                    onClick={setSelectedTool} 
+                    onVote={() => handleAction(() => setShowLeadModal(true))}
+                    onLike={handleLike}
+                    onStar={handleStar}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen pt-20 pb-16 px-4">
+      <Navigation 
+        activeTab={activeTab} 
+        setActiveTab={(t) => { setActiveTab(t); setSeoTarget(null); }} 
+        fatigueMode={fatigueMode} 
+        setFatigueMode={setFatigueMode} 
+        onOpenCategories={() => setShowCategorySidebar(true)}
+      />
+
+      {showCategorySidebar && (
+        <>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[800]" onClick={() => setShowCategorySidebar(false)}></div>
+          <div className="fixed top-0 left-0 bottom-0 w-full max-w-xs bg-[#0a0a0a] border-r border-[#1f1f1f] z-[900] p-8 animate-in slide-in-from-left duration-300 overflow-y-auto">
+            <div className="flex items-center justify-between mb-10">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-white">Categories</h3>
+              <button onClick={() => setShowCategorySidebar(false)} className="text-[#444] hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="space-y-2">
+              <button 
+                onClick={() => { setSelectedCategory('All'); setShowCategorySidebar(false); }}
+                className={`w-full text-left px-4 py-3 rounded text-xs font-bold uppercase tracking-widest transition-colors ${selectedCategory === 'All' ? 'bg-[#1f1f1f] text-white' : 'text-[#666] hover:text-white'}`}
+              >
+                Global Index
+              </button>
+              {categories.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => { setSelectedCategory(cat); setShowCategorySidebar(false); setActiveTab('discover'); }}
+                  className={`w-full text-left px-4 py-3 rounded text-xs font-bold uppercase tracking-widest transition-colors ${selectedCategory === cat ? 'bg-[#1f1f1f] text-white' : 'text-[#666] hover:text-white'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {user && (
+        <div className="container mx-auto mb-8 animate-in slide-in-from-top-4">
+          <div className="bg-[#0a0a0a] p-3 rounded-lg border border-electric-blue/20 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-black text-electric-blue uppercase tracking-widest">Builder Status</span>
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-electric-blue/5 border border-electric-blue/20 text-[10px] font-bold text-electric-blue">
+                <Gift size={10} /> {user.points} Points
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowViralModal(true)}
+              className="flex items-center gap-2 text-[10px] font-bold text-white hover:text-electric-blue transition-colors uppercase tracking-widest"
+            >
+              <UserPlus size={14} /> Referral Reward
+            </button>
+          </div>
+        </div>
+      )}
+
+      <main className="container mx-auto">
+        {renderContent()}
+      </main>
+
+      <footer className="mt-24 border-t border-[#1f1f1f] pt-16 pb-12 max-w-6xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#eee]">AI Tool Box</h4>
+            <div className="flex flex-col gap-3">
+              {['Alternatives to ChatGPT', 'AI Tool Comparison', 'Best AI tools 2025'].map(kw => (
+                <button key={kw} onClick={() => setSeoTarget({ keyword: kw, toolId: kw.includes('ChatGPT') ? 'chatgpt' : undefined })} className="text-[11px] text-[#444] hover:text-white text-left transition-colors font-medium">{kw}</button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#eee]">Directory</h4>
+            <div className="flex flex-col gap-3">
+              {['AI tool directory for startups', 'Free AI tool directory', 'AI tools for marketing'].map(kw => (
+                <button key={kw} onClick={() => { setSeoTarget({ keyword: kw }); setActiveTab('discover'); }} className="text-[11px] text-[#444] hover:text-white text-left transition-colors font-medium">{kw}</button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#eee]">Engine</h4>
+            <div className="flex flex-col gap-3">
+              {['AI Tool Comparison', 'AI Tool Review Site', 'Prompt Template Library'].map(kw => (
+                <button key={kw} onClick={() => { setSeoTarget({ keyword: kw }); setActiveTab('leaderboards'); }} className="text-[11px] text-[#444] hover:text-white text-left transition-colors font-medium">{kw}</button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#eee]">Prompts</h4>
+            <div className="flex flex-col gap-3">
+              {['ChatGPT prompt templates', 'SEO prompt templates', 'AI prompt templates'].map(kw => (
+                <button key={kw} onClick={() => setActiveTab('prompts')} className="text-[11px] text-[#444] hover:text-white text-left transition-colors font-medium">{kw}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="h-px bg-[#1f1f1f] w-full mb-8" />
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 bg-white text-black rounded flex items-center justify-center font-black">Z</div>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#222]">AI Tool Box &copy; 2024 • 10EX.AI POWERED</span>
+          </div>
+          <div className="flex gap-8">
+            <a href="#" className="text-[10px] font-bold uppercase tracking-widest text-[#444] hover:text-[#888]">Privacy</a>
+            <a href="#" className="text-[10px] font-bold uppercase tracking-widest text-[#444] hover:text-[#888]">Terms</a>
+            <a href="https://10ex.ai" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold uppercase tracking-widest text-[#444] hover:text-[#888] flex items-center gap-1">10ex Labs <ExternalLink size={10} /></a>
+          </div>
+        </div>
+      </footer>
+
+      {showAuthModal && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/95" onClick={() => setShowAuthModal(false)}></div>
+          <div className="relative bg-[#0a0a0a] w-full max-w-sm p-10 rounded-lg border border-[#1f1f1f] space-y-10 shadow-2xl">
+            <div className="text-center space-y-3">
+              <h3 className="text-3xl font-black">Access Ecosystem.</h3>
+              <p className="text-[#666] text-xs font-medium leading-relaxed">Join 50k+ practitioners. Unlock advanced comparison logic and upvotes.</p>
+            </div>
+            <div className="space-y-4">
+              <button onClick={handleSignup} className="w-full bg-white text-black py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:bg-[#eee] transition-all uppercase tracking-widest">
+                <Globe size={18} /> Continue with Google
+              </button>
+              <div className="flex items-center gap-4 py-2 opacity-20">
+                <div className="h-px bg-white flex-1"></div>
+                <span className="text-[10px] text-white font-black">OR</span>
+                <div className="h-px bg-white flex-1"></div>
+              </div>
+              <form onSubmit={handleSignup} className="space-y-4">
+                <input required type="email" placeholder="Work email address" className="w-full bg-black border border-[#1f1f1f] rounded py-3.5 px-4 focus:outline-none focus:border-[#333] text-sm font-medium" />
+                <button type="submit" className="w-full bg-[#111] border border-[#1f1f1f] text-white py-4 rounded font-bold text-xs hover:bg-[#1a1a1a] transition-all uppercase tracking-widest">
+                  Direct Login
+                </button>
+              </form>
+            </div>
+            <p className="text-[9px] text-center text-[#333] uppercase tracking-[0.2em] font-black">Secure protocol enabled • powered by 10ex</p>
+          </div>
+        </div>
+      )}
+
+      {showViralModal && (
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/95" onClick={() => setShowViralModal(false)}></div>
+          <div className="relative bg-[#0a0a0a] w-full max-w-md p-12 rounded-lg border border-electric-blue/30 space-y-8 text-center shadow-2xl">
+            <div className="w-20 h-20 bg-electric-blue/5 rounded-full flex items-center justify-center mx-auto text-electric-blue border border-electric-blue/20">
+              <Rocket size={40} />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-3xl font-black text-white leading-tight uppercase italic tracking-tighter">viral multiplier.</h3>
+              <p className="text-[#888] text-sm leading-relaxed">Refer 2 friends to unlock the <span className="text-white">Pro Prompt Hub</span> and <span className="text-white">Exclusive Comparison Stats</span>.</p>
+            </div>
+            <div className="p-5 rounded border border-dashed border-[#1f1f1f] bg-black space-y-4">
+              <p className="text-[10px] text-[#444] uppercase font-bold tracking-[0.3em]">Share Your Link</p>
+              <div className="flex gap-2">
+                <input readOnly value={`tools.10ex.ai/join?ref=${user?.referralCode || 'ALPHA'}`} className="flex-1 bg-black border border-[#1f1f1f] rounded py-2.5 px-3 text-xs text-white focus:outline-none font-mono" />
+                <button onClick={() => { navigator.clipboard.writeText(`tools.10ex.ai/join?ref=${user?.referralCode || 'ALPHA'}`); alert('Link copied!'); }} className="bg-white text-black p-2.5 rounded hover:bg-[#eee] transition-all"><Copy size={16} /></button>
+              </div>
+            </div>
+            <button onClick={() => setShowViralModal(false)} className="text-[10px] text-[#222] uppercase tracking-[0.2em] font-black hover:text-[#444] transition-colors underline">I'll share later</button>
+          </div>
+        </div>
+      )}
+
+      {showLeadModal && (
+        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="absolute inset-0 bg-black/90" onClick={() => setShowLeadModal(false)}></div>
+           <div className="relative bg-[#0a0a0a] w-full max-w-sm p-10 rounded-lg border border-[#1f1f1f] space-y-8 text-center shadow-2xl">
+              <div className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center mx-auto">
+                <ThumbsUp size={32} />
+              </div>
+              <div className="space-y-3">
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter">Upvote.</h3>
+                <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2025</span>.</p>
+              </div>
+              <button 
+                onClick={() => { setShowLeadModal(false); if(user) setUser({...user, points: user.points + 5}); }}
+                className="w-full bg-white text-black py-4 rounded font-bold text-xs uppercase tracking-widest hover:bg-[#eee] transition-all"
+              >
+                Confirm Vote +5 Pts
+              </button>
+           </div>
+        </div>
+      )}
+
+      {selectedTool && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/95" onClick={() => setSelectedTool(null)}></div>
+          <div className="relative bg-[#0a0a0a] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#1f1f1f] p-8 md:p-14 animate-in zoom-in-95 duration-200 scrollbar-hide shadow-[0_0_100px_rgba(0,0,0,1)]">
+            <button onClick={() => setSelectedTool(null)} className="absolute top-8 right-8 p-2 hover:bg-[#111] rounded transition-colors text-[#444] hover:text-white"><X size={24} /></button>
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12">
+              <div className="w-24 h-24 rounded bg-white text-black flex items-center justify-center text-4xl font-black shrink-0">{selectedTool.name[0]}</div>
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-4">
+                  <h2 className="text-4xl font-black tracking-tight uppercase italic">{selectedTool.name}</h2>
+                  <span className="bg-black text-[#666] text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-widest border border-[#1f1f1f]">{selectedTool.category}</span>
+                </div>
+                <p className="text-lg text-[#888] font-medium leading-relaxed">{selectedTool.tagline}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+              <div className="lg:col-span-7 space-y-10">
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#444]">Analysis Engine</h3>
+                  <p className="text-[#aaa] leading-relaxed text-base font-medium italic">"{selectedTool.description}"</p>
+                </section>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="p-6 rounded border border-[#1f1f1f] bg-black space-y-4">
+                    <h4 className="text-[10px] font-black text-green-500 uppercase tracking-widest">Strengths</h4>
+                    <ul className="space-y-3">
+                      {selectedTool.strengths.map((s, i) => (
+                        <li key={i} className="text-[11px] text-[#666] font-bold flex items-center gap-2 italic"><div className="w-1.5 h-1.5 rounded-full bg-green-500" /> {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="p-6 rounded border border-[#1f1f1f] bg-black space-y-4">
+                    <h4 className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Risks</h4>
+                    <ul className="space-y-3">
+                      {selectedTool.weaknesses.map((s, i) => (
+                        <li key={i} className="text-[11px] text-[#666] font-bold flex items-center gap-2 italic"><div className="w-1.5 h-1.5 rounded-full bg-pink-500" /> {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div className="lg:col-span-5 space-y-10">
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => handleAction(() => window.open(selectedTool.websiteUrl, '_blank'))}
+                    className="bg-white text-black py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:bg-[#eee] transition-all uppercase tracking-widest"
+                  >
+                    Open Resource <ArrowUpRight size={18} />
+                  </button>
+                  <button onClick={() => handleAction(() => setShowLeadModal(true))} className="bg-black border border-[#1f1f1f] text-[#888] py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:text-white transition-all uppercase tracking-widest">
+                    <ThumbsUp size={16} /> Upvote
+                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleLike(selectedTool)} className={`flex-1 border border-[#1f1f1f] py-4 rounded flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${user?.likedToolIds.includes(selectedTool.id) ? 'text-pink-500 border-pink-500/20 bg-pink-500/5' : 'text-[#444] hover:text-white'}`}>
+                      <Heart size={14} fill={user?.likedToolIds.includes(selectedTool.id) ? "currentColor" : "none"} /> {user?.likedToolIds.includes(selectedTool.id) ? 'Liked' : 'Like'}
+                    </button>
+                    <button onClick={() => handleStar(selectedTool)} className={`flex-1 border border-[#1f1f1f] py-4 rounded flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${user?.starredToolIds.includes(selectedTool.id) ? 'text-yellow-500 border-yellow-500/20 bg-yellow-500/5' : 'text-[#444] hover:text-white'}`}>
+                      <Star size={14} fill={user?.starredToolIds.includes(selectedTool.id) ? "currentColor" : "none"} /> {user?.starredToolIds.includes(selectedTool.id) ? 'Saved' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default App;
