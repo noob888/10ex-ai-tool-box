@@ -32,7 +32,7 @@ This is a Next.js application for discovering and managing AI tools, migrated fr
 2. **Configure environment variables:**
    Create a `.env.local` file in the root directory:
    ```env
-   DATABASE_URL=postgresql+asyncpg://postgres:HFtN1VP5CuA7VEAOT92M@projectsdb.c9oemiuay1os.us-east-2.rds.amazonaws.com:5432/10ex
+   DATABASE_URL=your_db_url_here
    GEMINI_API_KEY=your_api_key_here
    ```
    Get your Gemini API key from: https://aistudio.google.com/apikey
