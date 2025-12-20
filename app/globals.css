@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #000000;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+.glass {
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+}
+
+.electric-blue {
+  color: #2e7bff;
+}
+
+.bg-electric-blue {
+  background-color: #2e7bff;
+}
+
+.border-electric-blue {
+  border-color: #2e7bff;
+}
+
+.glow-orange {
+  color: #ff8c00;
+}
+
+.bg-glow-orange {
+  background-color: #ff8c00;
+}
+
+.shadow-orange {
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.1);
+}
+
+.shadow-blue {
+  box-shadow: 0 0 25px rgba(46, 123, 255, 0.15);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #a1a1a1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1f1f1f;
+  border-radius: 10px;
+}
+
+.card-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  background-color: #0f0f0f !important;
+  border-color: #333333 !important;
+  transform: translateY(-2px);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+

@@ -1,19 +1,88 @@
+'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Navigation } from './components/Navigation';
-import { ToolCard } from './components/ToolCard';
-import { ChatInterface } from './components/ChatInterface';
-import { StackBuilder } from './components/StackBuilder';
-import { PromptLibrary } from './components/PromptLibrary';
-import { SEOSection } from './components/SEOPages';
-import { toolsDataset, promptsDataset } from './data/toolsData';
-import { Category, Tool, User } from './types';
+import { Navigation } from './Navigation';
+import { ToolCard } from './ToolCard';
+import { ChatInterface } from './ChatInterface';
+import { StackBuilder } from './StackBuilder';
+import { PromptLibrary } from './PromptLibrary';
+import { SEOSection } from './SEOPages';
+import { ToolListStructuredData } from './StructuredData';
+import { Category, Tool, User } from '@/types';
 import { 
   Search, TrendingUp, X, Copy, Rocket, Box, Zap, 
-  ThumbsUp, Award, ArrowRight, Flame, ArrowUpRight, Star, Gift, UserPlus, Heart, Globe, ExternalLink
+  ThumbsUp, Award, ArrowRight, Flame, ArrowUpRight, Star, Gift, UserPlus, Heart, Globe, ExternalLink, Loader2
 } from 'lucide-react';
 
+// Data fetching hooks
+const useTools = () => {
+  const [tools, setTools] = useState<Tool[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to fetch from API first
+    fetch('/api/tools')
+      .then(res => res.json())
+      .then(data => {
+        if (data.tools && data.tools.length > 0) {
+          setTools(data.tools);
+        } else {
+          // Fallback to local data if database is empty
+          import('@/data/toolsData').then(({ toolsDataset }) => {
+            setTools(toolsDataset);
+          });
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching tools from API, using local data:', err);
+        // Fallback to local data on error
+        import('@/data/toolsData').then(({ toolsDataset }) => {
+          setTools(toolsDataset);
+          setLoading(false);
+        });
+      });
+  }, []);
+
+  return { tools, loading };
+};
+
+const usePrompts = () => {
+  const [prompts, setPrompts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to fetch from API first
+    fetch('/api/prompts')
+      .then(res => res.json())
+      .then(data => {
+        if (data.prompts && data.prompts.length > 0) {
+          setPrompts(data.prompts);
+        } else {
+          // Fallback to local data if database is empty
+          import('@/data/toolsData').then(({ promptsDataset }) => {
+            setPrompts(promptsDataset);
+          });
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching prompts from API, using local data:', err);
+        // Fallback to local data on error
+        import('@/data/toolsData').then(({ promptsDataset }) => {
+          setPrompts(promptsDataset);
+          setLoading(false);
+        });
+      });
+  }, []);
+
+  return { prompts, loading };
+};
+
 const App: React.FC = () => {
+  const { tools: toolsDataset, loading: toolsLoading } = useTools();
+  const { prompts: promptsDataset, loading: promptsLoading } = usePrompts();
+  
   const [activeTab, setActiveTab] = useState('discover');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
@@ -99,7 +168,7 @@ const App: React.FC = () => {
       return result.sort((a,b) => b.rating - a.rating).slice(0, 12);
     }
     return result.sort((a, b) => b.votes - a.votes);
-  }, [searchQuery, selectedCategory, fatigueMode]);
+  }, [searchQuery, selectedCategory, fatigueMode, toolsDataset]);
 
   // Reset displayed count when filters change
   useEffect(() => {
@@ -118,7 +187,7 @@ const App: React.FC = () => {
 
   const trendingTools = useMemo(() => {
     return toolsDataset.sort((a, b) => b.popularity - a.popularity).slice(0, 8);
-  }, []);
+  }, [toolsDataset]);
 
   const handleHeroSubmit = () => {
     if (!heroQuery.trim()) return;
@@ -133,47 +202,84 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLike = (tool: Tool) => {
-    handleAction(() => {
+  const handleLike = async (tool: Tool) => {
+    handleAction(async () => {
       if (!user) return;
-      setUser({
-        ...user,
-        likedToolIds: user.likedToolIds.includes(tool.id) 
-          ? user.likedToolIds.filter(id => id !== tool.id)
-          : [...user.likedToolIds, tool.id],
-        points: user.points + 2
-      });
+      
+      const isLiked = user.likedToolIds.includes(tool.id);
+      
+      try {
+        const response = await fetch('/api/users/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            toolId: tool.id,
+            interactionType: 'like',
+            action: isLiked ? 'remove' : 'add',
+          }),
+        });
+        
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Error updating like:', error);
+      }
     });
   };
 
-  const handleStar = (tool: Tool) => {
-    handleAction(() => {
+  const handleStar = async (tool: Tool) => {
+    handleAction(async () => {
       if (!user) return;
-      setUser({
-        ...user,
-        starredToolIds: user.starredToolIds.includes(tool.id) 
-          ? user.starredToolIds.filter(id => id !== tool.id)
-          : [...user.starredToolIds, tool.id],
-        points: user.points + 2
-      });
+      
+      const isStarred = user.starredToolIds.includes(tool.id);
+      
+      try {
+        const response = await fetch('/api/users/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.id,
+            toolId: tool.id,
+            interactionType: 'star',
+            action: isStarred ? 'remove' : 'add',
+          }),
+        });
+        
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Error updating star:', error);
+      }
     });
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUser({
-      id: 'u-' + Math.random().toString(36).substr(2, 9),
-      name: 'Alpha User',
-      email: 'user@ecosystem.io',
-      points: 100,
-      referralCode: 'BETA-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
-      joinedAt: new Date().toISOString(),
-      bookmarkedToolIds: [],
-      likedToolIds: [],
-      starredToolIds: []
-    });
-    setShowAuthModal(false);
-    setShowViralModal(true);
+    const formData = new FormData(e.target as HTMLFormElement);
+    const email = formData.get('email') as string;
+    const name = formData.get('name') as string || 'User';
+
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email }),
+      });
+
+      const data = await response.json();
+      if (data.user) {
+        setUser(data.user);
+        setShowAuthModal(false);
+        setShowViralModal(true);
+      }
+    } catch (error) {
+      console.error('Error signing up:', error);
+    }
   };
 
   // Function to filter tools based on SEO keyword
@@ -183,7 +289,6 @@ const App: React.FC = () => {
 
     // Map SEO keywords to tool filters
     if (lowerKeyword.includes('chatgpt alternative') || lowerKeyword.includes('chatgpt alternatives')) {
-      // Find ChatGPT and get alternatives in same category
       const chatgpt = toolsDataset.find(t => t.id === 'chatgpt' || t.name.toLowerCase().includes('chatgpt'));
       if (chatgpt) {
         filtered = toolsDataset
@@ -215,7 +320,6 @@ const App: React.FC = () => {
     } else if (lowerKeyword.includes('free tool') || lowerKeyword.includes('free tools')) {
       filtered = toolsDataset.filter(t => t.pricing === 'Free').sort((a, b) => b.rating - a.rating);
     } else {
-      // Generic search - match by name, tagline, or category
       filtered = toolsDataset.filter(t => 
         t.name.toLowerCase().includes(lowerKeyword) ||
         t.tagline.toLowerCase().includes(lowerKeyword) ||
@@ -258,10 +362,23 @@ const App: React.FC = () => {
               setHeroQuery('');
             }}
             onToolClick={setSelectedTool}
-            onVote={() => handleAction(() => setShowLeadModal(true))}
+            onVote={async () => {
+              if (user && selectedTool) {
+                try {
+                  await fetch('/api/tools/vote', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ toolId: selectedTool.id, userId: user.id }),
+                  });
+                  setShowLeadModal(true);
+                } catch (error) {
+                  console.error('Error voting:', error);
+                }
+              } else {
+                setShowAuthModal(true);
+              }
+            }}
             onInput={() => {
-              // Only show auth modal if user is not logged in
-              // This will be called after 5 successful responses
               if (!user) {
                 setShowAuthModal(true);
               }
@@ -346,7 +463,7 @@ const App: React.FC = () => {
           <StackBuilder 
             tools={toolsDataset} 
             onToolClick={setSelectedTool} 
-            onVote={() => handleAction(() => setShowLeadModal(true))}
+            onVote={(tool) => handleAction(() => setShowLeadModal(true))}
             onLike={handleLike}
             onStar={handleStar}
           />
@@ -443,8 +560,27 @@ const App: React.FC = () => {
     }
   };
 
+  if (toolsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="animate-spin text-electric-blue mx-auto mb-4" size={32} />
+          <p className="text-[#666] text-sm">Loading tools...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen pt-20 pb-16 px-4">
+    <>
+      {toolsDataset.length > 0 && (
+        <ToolListStructuredData
+          tools={toolsDataset}
+          title="Best AI Tools Directory 2025"
+          description="Comprehensive directory of 600+ AI tools including ChatGPT alternatives, writing tools, design tools, and more."
+        />
+      )}
+      <div className="min-h-screen pt-20 pb-16 px-4">
       <Navigation 
         activeTab={activeTab} 
         setActiveTab={(t) => { 
@@ -620,7 +756,7 @@ const App: React.FC = () => {
           <div className="relative bg-[#0a0a0a] w-full max-w-sm p-10 rounded-lg border border-[#1f1f1f] space-y-10 shadow-2xl">
             <div className="text-center space-y-3">
               <h3 className="text-3xl font-black">Access Ecosystem.</h3>
-              <p className="text-[#666] text-xs font-medium leading-relaxed">Join 10k+ AI hackers. Unlock advanced comparison logic and upvotes.</p>
+              <p className="text-[#666] text-xs font-medium leading-relaxed">Join 50k+ practitioners. Unlock advanced comparison logic and upvotes.</p>
             </div>
             <div className="space-y-4">
               <button onClick={handleSignup} className="w-full bg-white text-black py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:bg-[#eee] transition-all uppercase tracking-widest">
@@ -632,7 +768,8 @@ const App: React.FC = () => {
                 <div className="h-px bg-white flex-1"></div>
               </div>
               <form onSubmit={handleSignup} className="space-y-4">
-                <input required type="email" placeholder="Email address" className="w-full bg-black border border-[#1f1f1f] rounded py-3.5 px-4 focus:outline-none focus:border-[#333] text-sm font-medium" />
+                <input required type="text" name="name" placeholder="Name" className="w-full bg-black border border-[#1f1f1f] rounded py-3.5 px-4 focus:outline-none focus:border-[#333] text-sm font-medium" />
+                <input required type="email" name="email" placeholder="Email address" className="w-full bg-black border border-[#1f1f1f] rounded py-3.5 px-4 focus:outline-none focus:border-[#333] text-sm font-medium" />
                 <button type="submit" className="w-full bg-[#111] border border-[#1f1f1f] text-white py-4 rounded font-bold text-xs hover:bg-[#1a1a1a] transition-all uppercase tracking-widest">
                   Sign Up
                 </button>
@@ -643,7 +780,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {showViralModal && (
+      {showViralModal && user && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/95" onClick={() => setShowViralModal(false)}></div>
           <div className="relative bg-[#0a0a0a] w-full max-w-md p-12 rounded-lg border border-electric-blue/30 space-y-8 text-center shadow-2xl">
@@ -657,8 +794,8 @@ const App: React.FC = () => {
             <div className="p-5 rounded border border-dashed border-[#1f1f1f] bg-black space-y-4">
               <p className="text-[10px] text-[#444] uppercase font-bold tracking-[0.3em]">Share Your Link</p>
               <div className="flex gap-2">
-                <input readOnly value={`tools.10ex.ai/join?ref=${user?.referralCode || 'ALPHA'}`} className="flex-1 bg-black border border-[#1f1f1f] rounded py-2.5 px-3 text-xs text-white focus:outline-none font-mono" />
-                <button onClick={() => { navigator.clipboard.writeText(`tools.10ex.ai/join?ref=${user?.referralCode || 'ALPHA'}`); alert('Link copied!'); }} className="bg-white text-black p-2.5 rounded hover:bg-[#eee] transition-all"><Copy size={16} /></button>
+                <input readOnly value={`tools.10ex.ai/join?ref=${user.referralCode}`} className="flex-1 bg-black border border-[#1f1f1f] rounded py-2.5 px-3 text-xs text-white focus:outline-none font-mono" />
+                <button onClick={() => { navigator.clipboard.writeText(`tools.10ex.ai/join?ref=${user.referralCode}`); alert('Link copied!'); }} className="bg-white text-black p-2.5 rounded hover:bg-[#eee] transition-all"><Copy size={16} /></button>
               </div>
             </div>
             <button onClick={() => setShowViralModal(false)} className="text-[10px] text-[#222] uppercase tracking-[0.2em] font-black hover:text-[#444] transition-colors underline">I'll share later</button>
@@ -678,7 +815,25 @@ const App: React.FC = () => {
                 <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2025</span>.</p>
               </div>
               <button 
-                onClick={() => { setShowLeadModal(false); if(user) setUser({...user, points: user.points + 5}); }}
+                onClick={async () => { 
+                  setShowLeadModal(false);
+                  if (user && selectedTool) {
+                    try {
+                      await fetch('/api/tools/vote', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ toolId: selectedTool.id, userId: user.id }),
+                      });
+                      const userResponse = await fetch(`/api/users?id=${user.id}`);
+                      const userData = await userResponse.json();
+                      if (userData.user) {
+                        setUser(userData.user);
+                      }
+                    } catch (error) {
+                      console.error('Error voting:', error);
+                    }
+                  }
+                }}
                 className="w-full bg-white text-black py-4 rounded font-bold text-xs uppercase tracking-widest hover:bg-[#eee] transition-all"
               >
                 Confirm Vote +5 Pts
@@ -753,7 +908,9 @@ const App: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 
 export default App;
+

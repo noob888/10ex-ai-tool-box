@@ -4,9 +4,17 @@ import { Tool } from "../types";
 
 export const getAIRecommendations = async (query: string, tools: Tool[]): Promise<{ text: string, recommendedToolIds: string[] }> => {
   try {
-    // Strictly follow rule: Use process.env.API_KEY directly. 
-    // The index.html global shim ensures this doesn't throw if undefined in other contexts.
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+    // Check if API key is available
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    
+    if (!apiKey || apiKey.trim() === "") {
+      return { 
+        text: "API key not configured. Please set GEMINI_API_KEY in your .env.local file. For now, here are some popular tools that might help with your query.", 
+        recommendedToolIds: tools.slice(0, 3).map(t => t.id)
+      };
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
 
     const toolContext = tools.slice(0, 150).map(t => `${t.id}: ${t.name} - ${t.tagline}`).join("\n");
     
@@ -40,6 +48,10 @@ export const getAIRecommendations = async (query: string, tools: Tool[]): Promis
     return { text: cleanText, recommendedToolIds };
   } catch (error) {
     console.error("Gemini Error:", error);
-    return { text: "I hit a snag. Try browsing our category rankings!", recommendedToolIds: [] };
+    // Return fallback response with some tools
+    return { 
+      text: "I encountered an issue connecting to the AI service. Here are some popular tools that might help:", 
+      recommendedToolIds: tools.slice(0, 3).map(t => t.id)
+    };
   }
 };

@@ -18,21 +18,31 @@ interface Props {
   onToolClick: (tool: Tool) => void;
   onVote: (tool: Tool) => void;
   onInput?: () => void;
+  onLike?: (tool: Tool) => void;
+  onStar?: (tool: Tool) => void;
+  isLiked?: (toolId: string) => boolean;
+  isStarred?: (toolId: string) => boolean;
 }
 
-export const ChatInterface: React.FC<Props> = ({ tools, initialQuery, onBack, onToolClick, onVote, onInput }) => {
+export const ChatInterface: React.FC<Props> = ({ tools, initialQuery, onBack, onToolClick, onVote, onInput, onLike, onStar, isLiked, isStarred }) => {
   const [messages, setMessages] = useState<Message[]>([
     { role: 'bot', content: "Stack Analysis Hub. What's the target outcome?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [successfulResponses, setSuccessfulResponses] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const initialQuerySentRef = useRef(false);
+  const lastSentQueryRef = useRef<string>('');
 
   useEffect(() => {
-    if (initialQuery) {
+    if (initialQuery && !initialQuerySentRef.current) {
+      initialQuerySentRef.current = true;
+      // Reset lastSentQueryRef to allow initial query
+      lastSentQueryRef.current = '';
       handleSend(initialQuery);
     }
-  }, []);
+  }, [initialQuery]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -44,24 +54,70 @@ export const ChatInterface: React.FC<Props> = ({ tools, initialQuery, onBack, on
     const query = queryOverride || input.trim();
     if (!query || isLoading) return;
 
+    const trimmedQuery = query.trim();
+    
+    // Prevent duplicate messages using ref (synchronous check)
+    if (lastSentQueryRef.current === trimmedQuery) {
+      return; // Duplicate query detected, exit early
+    }
+    
+    // Update ref to track this query
+    lastSentQueryRef.current = trimmedQuery;
+    
+    // Add user message
+    setMessages(prev => {
+      // Double-check for duplicates in state (in case of race conditions)
+      const lastUserMessage = prev.filter(m => m.role === 'user').pop();
+      if (lastUserMessage?.content === trimmedQuery) {
+        lastSentQueryRef.current = ''; // Reset ref if duplicate found in state
+        return prev;
+      }
+      return [...prev, { role: 'user', content: trimmedQuery }];
+    });
+
     if (!queryOverride) setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: query }]);
     setIsLoading(true);
-    
-    if (onInput) onInput();
 
-    const { text, recommendedToolIds } = await getAIRecommendations(query, tools);
-    
-    const recommendedTools = recommendedToolIds
-      .map(id => tools.find(t => t.id === id))
-      .filter((t): t is Tool => !!t);
+    try {
+      const { text, recommendedToolIds } = await getAIRecommendations(query, tools);
+      
+      const recommendedTools = recommendedToolIds
+        .map(id => tools.find(t => t.id === id))
+        .filter((t): t is Tool => !!t);
 
-    setMessages(prev => [...prev, { 
-      role: 'bot', 
-      content: text,
-      recommendedTools 
-    }]);
-    setIsLoading(false);
+      // Prevent duplicate bot responses
+      setMessages(prev => {
+        const lastMessage = prev[prev.length - 1];
+        // If the last message is already a bot response with the same content, don't add it again
+        if (lastMessage?.role === 'bot' && lastMessage.content === text) {
+          return prev;
+        }
+        return [...prev, { 
+          role: 'bot', 
+          content: text,
+          recommendedTools 
+        }];
+      });
+      
+      // Only count as successful if we got a valid response with content
+      if (text && text.trim().length > 0 && !text.includes("I hit a snag") && !text.includes("API key not configured")) {
+        setSuccessfulResponses(prev => {
+          const newCount = prev + 1;
+          // Show signup prompt after 5 successful responses
+          if (newCount === 5 && onInput) {
+            onInput();
+          }
+          return newCount;
+        });
+      }
+    } catch (error) {
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        content: "I encountered an error. Please try again or check your API key configuration."
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,6 +128,13 @@ export const ChatInterface: React.FC<Props> = ({ tools, initialQuery, onBack, on
         </button>
       )}
 
+      {successfulResponses >= 5 && (
+        <div className="mb-4 p-4 rounded-lg border border-electric-blue/30 bg-electric-blue/5">
+          <p className="text-xs text-electric-blue font-bold uppercase tracking-widest text-center">
+            🎉 You've made {successfulResponses} queries! Sign up to unlock unlimited access.
+          </p>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto space-y-6 p-4 mb-4 scrollbar-hide" ref={scrollRef}>
         {messages.map((msg, i) => (
           <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -98,8 +161,10 @@ export const ChatInterface: React.FC<Props> = ({ tools, initialQuery, onBack, on
                     tool={tool} 
                     onClick={onToolClick} 
                     onVote={onVote} 
-                    onLike={() => {}} 
-                    onStar={() => {}} 
+                    onLike={onLike || (() => {})} 
+                    onStar={onStar || (() => {})} 
+                    isLiked={isLiked ? isLiked(tool.id) : false}
+                    isStarred={isStarred ? isStarred(tool.id) : false}
                   />
                 ))}
               </div>

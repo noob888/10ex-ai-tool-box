@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tool } from '../types';
-import { Search, Plus, Trash2, Box, Sparkles, Download, Zap, X } from 'lucide-react';
+import { Search, Plus, Trash2, Box, Sparkles, Download, Zap, X, ArrowRight } from 'lucide-react';
 import { ToolCard } from './ToolCard';
 
 interface Props {
@@ -15,11 +15,24 @@ interface Props {
 export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLike, onStar }) => {
   const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
   const [search, setSearch] = useState('');
+  const [displayedToolsCount, setDisplayedToolsCount] = useState(12);
+
+  // Reset displayed count when search changes
+  useEffect(() => {
+    setDisplayedToolsCount(12);
+  }, [search]);
 
   const filtered = tools.filter(t => 
     t.name.toLowerCase().includes(search.toLowerCase()) || 
     t.category.toLowerCase().includes(search.toLowerCase())
-  ).slice(0, 12);
+  );
+
+  const displayedFiltered = filtered.slice(0, displayedToolsCount);
+  const hasMoreTools = displayedToolsCount < filtered.length;
+
+  const handleLoadMore = () => {
+    setDisplayedToolsCount(prev => prev + 12);
+  };
 
   const toggleTool = (tool: Tool) => {
     if (selectedTools.find(t => t.id === tool.id)) {
@@ -31,10 +44,18 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in fade-in duration-500 pt-8 max-w-7xl mx-auto items-start">
+      {/* #region agent log */}
+      {(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/282783f3-1adb-4f2c-8dfb-b84639e0aa7b',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StackBuilder.tsx:32',message:'StackBuilder render - checking RHS visibility',data:{selectedToolsCount:selectedTools.length,windowWidth:typeof window !== 'undefined' ? window.innerWidth : 0,isMobile:typeof window !== 'undefined' ? window.innerWidth < 1024 : false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        return null;
+      })()}
+      {/* #endregion */}
       {/* RHS on Mobile: Show stack at the top or bottom. Here we stack it normally but use 'order' if needed. */}
       {/* For mobile UX, having the current stack accessible is key. Let's place it at the top for small screens. */}
-      <div className="lg:col-span-4 lg:order-2 order-1 sticky top-20 lg:static z-10">
-        <div className="bg-[#0a0a0a] p-6 lg:p-8 rounded-lg border border-[#1f1f1f] lg:sticky lg:top-24 max-h-[40vh] lg:max-h-[calc(100vh-140px)] flex flex-col shadow-2xl lg:shadow-none">
+      <div className="lg:col-span-4 lg:order-2 order-1 lg:sticky lg:top-20 z-10">
+        <div className="bg-[#0a0a0a] p-6 lg:p-8 rounded-lg border border-[#1f1f1f] lg:sticky lg:top-24 max-h-[60vh] sm:max-h-[50vh] lg:max-h-[calc(100vh-140px)] flex flex-col shadow-2xl lg:shadow-none">
           <div className="flex items-center justify-between mb-4 lg:mb-8 pb-4 border-b border-[#1f1f1f]">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-[#eee]">Production Stack</h3>
             <span className="text-[10px] font-bold bg-[#111] border border-[#1f1f1f] text-[#666] px-2 py-0.5 rounded">
@@ -45,7 +66,7 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
           <div className="flex-1 overflow-y-auto space-y-3 scrollbar-hide">
             {selectedTools.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-3 opacity-20 py-4 lg:py-8">
-                <Box size={24} lg:size={32} />
+                <Box size={24} />
                 <p className="text-[10px] lg:text-[11px] font-bold uppercase tracking-widest text-center">Stack Empty</p>
               </div>
             ) : (
@@ -64,8 +85,28 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
             )}
           </div>
 
-          <div className="mt-4 lg:mt-8 space-y-4 pt-4 lg:pt-6 border-t border-[#1f1f1f] hidden lg:block">
-            <button className="w-full bg-white text-black py-3 rounded font-bold text-xs hover:bg-[#eee] transition-all flex items-center justify-center gap-2 uppercase tracking-widest">
+          <div className="mt-4 lg:mt-8 space-y-4 pt-4 lg:pt-6 border-t border-[#1f1f1f]">
+            <button 
+              onClick={() => {
+                const manifest = {
+                  stack: selectedTools.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    category: t.category,
+                    websiteUrl: t.websiteUrl
+                  })),
+                  exportedAt: new Date().toISOString()
+                };
+                const blob = new Blob([JSON.stringify(manifest, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ai-stack-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="w-full bg-white text-black py-3 rounded font-bold text-xs hover:bg-[#eee] transition-all flex items-center justify-center gap-2 uppercase tracking-widest"
+            >
               <Download size={14} /> Export Manifest
             </button>
           </div>
@@ -95,7 +136,7 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(t => (
+          {displayedFiltered.map(t => (
             <div key={t.id} className="relative group">
               <ToolCard 
                 tool={t} 
@@ -117,6 +158,17 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
             </div>
           ))}
         </div>
+        {hasMoreTools && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={handleLoadMore}
+              className="bg-[#0a0a0a] border border-[#1f1f1f] text-white px-6 py-2.5 rounded-lg font-bold text-xs hover:bg-[#111] hover:border-[#333] transition-all uppercase tracking-widest flex items-center gap-2"
+            >
+              Load More
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
