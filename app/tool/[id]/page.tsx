@@ -4,12 +4,13 @@ import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { ToolDetailPage } from '@/components/ToolDetailPage';
 
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
   const toolsRepo = new ToolsRepository();
-  const tool = await toolsRepo.findById(params.id);
+  const tool = await toolsRepo.findById(id);
 
   if (!tool) {
     return {
@@ -57,8 +58,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ToolPage({ params }: Props) {
+  const { id } = await params;
   const toolsRepo = new ToolsRepository();
-  const tool = await toolsRepo.findById(params.id);
+  const tool = await toolsRepo.findById(id);
 
   if (!tool) {
     notFound();

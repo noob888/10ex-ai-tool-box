@@ -4,11 +4,12 @@ import { ToolsRepository } from '@/database/repositories/tools.repository';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const toolsRepo = new ToolsRepository();
-    const tool = await toolsRepo.findById(params.id);
+    const tool = await toolsRepo.findById(id);
 
     if (!tool) {
       return NextResponse.json(
