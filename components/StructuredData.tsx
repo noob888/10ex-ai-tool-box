@@ -68,8 +68,10 @@ export function ToolListStructuredData({ tools, title, description }: ToolListSt
             applicationCategory: tool.category,
             aggregateRating: {
               "@type": "AggregateRating",
-              ratingValue: tool.rating / 10,
-              ratingCount: tool.votes,
+              ratingValue: Math.max(1, Math.min(5, (tool.rating / 100) * 5)),
+              ratingCount: tool.votes || 1,
+              bestRating: 5,
+              worstRating: 1,
             },
           },
         })),

@@ -81,10 +81,10 @@ export default async function ToolPage({ params }: Props) {
     },
     "aggregateRating": {
       "@type": "AggregateRating",
-      "ratingValue": tool.rating / 10,
-      "ratingCount": tool.votes,
-      "bestRating": 10,
-      "worstRating": 0,
+      "ratingValue": Math.max(1, Math.min(5, (tool.rating / 100) * 5)),
+      "ratingCount": tool.votes || 1,
+      "bestRating": 5,
+      "worstRating": 1,
     },
     "url": tool.websiteUrl,
   };
