@@ -20,6 +20,32 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     domains: [],
   },
+  // Redirects for SEO
+  async redirects() {
+    return [
+      // Redirect old 2025 SEO page URLs to 2026
+      {
+        source: '/seo/top-chatgpt-alternatives-in-2025',
+        destination: '/seo/top-chatgpt-alternatives-in-2026',
+        permanent: true, // 301 redirect
+      },
+      {
+        source: '/seo/best-ai-writing-tools-2025',
+        destination: '/seo/best-ai-writing-tools-2026',
+        permanent: true,
+      },
+      {
+        source: '/seo/best-ai-coding-tools-2025',
+        destination: '/seo/best-ai-coding-tools-2026',
+        permanent: true,
+      },
+      {
+        source: '/seo/ai-research-tools-2025',
+        destination: '/seo/ai-research-tools-2026',
+        permanent: true,
+      },
+    ];
+  },
   // Headers for SEO
   async headers() {
     return [

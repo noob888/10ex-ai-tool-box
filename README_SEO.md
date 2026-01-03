@@ -70,15 +70,15 @@ Create these files in `/public`:
 
 The following SEO-optimized pages are automatically generated:
 
-- `/seo/top-chatgpt-alternatives-in-2025`
-- `/seo/best-ai-writing-tools-2025`
+- `/seo/top-chatgpt-alternatives-in-2026`
+- `/seo/best-ai-writing-tools-2026`
 - `/seo/free-ai-tools-for-startups`
 - `/seo/best-ai-tools-comparison`
 - `/seo/ai-design-tools-for-creators`
-- `/seo/best-ai-coding-tools-2025`
+- `/seo/best-ai-coding-tools-2026`
 - `/seo/ai-video-generation-tools`
 - `/seo/ai-marketing-tools-for-business`
-- `/seo/ai-research-tools-2025`
+- `/seo/ai-research-tools-2026`
 - `/seo/ai-sales-tools-outreach`
 - `/seo/ai-productivity-tools`
 - `/seo/ai-automation-tools`

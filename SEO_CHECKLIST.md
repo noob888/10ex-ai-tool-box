@@ -107,7 +107,7 @@ Create and add to `/public`:
 Primary:
 - AI tools
 - AI tool directory
-- Best AI tools 2025
+- Best AI tools 2026
 - ChatGPT alternatives
 
 Secondary:
@@ -118,8 +118,8 @@ Secondary:
 - AI automation tools
 
 Long-tail:
-- Top ChatGPT alternatives in 2025
-- Best AI writing tools 2025
+- Top ChatGPT alternatives in 2026
+- Best AI writing tools 2026
 - Free AI tools for startups
 - AI design tools for creators
 

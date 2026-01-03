@@ -8,10 +8,11 @@ import { StackBuilder } from './StackBuilder';
 import { PromptLibrary } from './PromptLibrary';
 import { SEOSection } from './SEOPages';
 import { ToolListStructuredData } from './StructuredData';
+import { NewsCard, NewsArticle } from './NewsCard';
 import { Category, Tool, User } from '@/types';
 import { 
   Search, TrendingUp, X, Copy, Rocket, Box, Zap, 
-  ThumbsUp, Award, ArrowRight, Flame, ArrowUpRight, Star, Gift, UserPlus, Heart, Globe, ExternalLink, Loader2
+  ThumbsUp, Award, ArrowRight, Flame, ArrowUpRight, Star, Gift, UserPlus, Heart, Globe, ExternalLink, Loader2, Newspaper
 } from 'lucide-react';
 
 // Data fetching hooks
@@ -79,9 +80,40 @@ const usePrompts = () => {
   return { prompts, loading };
 };
 
+const useNews = () => {
+  const [news, setNews] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/news?limit=10')
+      .then(res => res.json())
+      .then(data => {
+        if (data.articles && data.articles.length > 0) {
+          // Convert dates from strings to Date objects
+          const articles = data.articles.map((article: any) => ({
+            ...article,
+            publishedAt: new Date(article.publishedAt),
+            fetchedAt: new Date(article.fetchedAt),
+            createdAt: new Date(article.createdAt),
+            updatedAt: new Date(article.updatedAt),
+          }));
+          setNews(articles);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error fetching news:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  return { news, loading };
+};
+
 const App: React.FC = () => {
   const { tools: toolsDataset, loading: toolsLoading } = useTools();
   const { prompts: promptsDataset, loading: promptsLoading } = usePrompts();
+  const { news: newsArticles, loading: newsLoading } = useNews();
   
   const [activeTab, setActiveTab] = useState('discover');
   const [searchQuery, setSearchQuery] = useState('');
@@ -120,11 +152,9 @@ const App: React.FC = () => {
     }
   }, [seoTarget]);
 
-  const trendingNews = [
-    { id: 1, title: "Gemini 3 Pro sets new benchmarks in tool reasoning.", source: "AI Insights Daily", time: "2h ago" },
-    { id: 2, title: "Why open-source models are winning the 'AI Tool Comparison' wars.", source: "TechCrunch", time: "5h ago" },
-    { id: 3, title: "10ex.ai releases new autonomous agent architecture for founders.", source: "Founder Hub", time: "1d ago" },
-  ];
+  // Get featured and regular news
+  const featuredNews = newsArticles.filter((article: NewsArticle) => article.isFeatured).slice(0, 3);
+  const regularNews = newsArticles.filter((article: NewsArticle) => !article.isFeatured).slice(0, 6);
 
   const categories = Object.values(Category);
 
@@ -132,19 +162,19 @@ const App: React.FC = () => {
   const footerSEOLinks = useMemo(() => {
     return {
       toolBox: [
-        'Top ChatGPT Alternatives in 2025',
-        'Best AI Writing Tools 2025',
+        'Top ChatGPT Alternatives in 2026',
+        'Best AI Writing Tools 2026',
         'Free AI Tools for Startups',
         'Best AI Tools Comparison'
       ],
       directory: [
         'AI Design Tools for Creators',
-        'Best AI Coding Tools 2025',
+        'Best AI Coding Tools 2026',
         'AI Video Generation Tools',
         'AI Marketing Tools for Business'
       ],
       engine: [
-        'AI Research Tools 2025',
+        'AI Research Tools 2026',
         'AI Sales Tools & Outreach',
         'AI Productivity Tools',
         'AI Automation Tools'
@@ -152,7 +182,7 @@ const App: React.FC = () => {
       prompts: [
         'ChatGPT Prompt Templates',
         'SEO Prompt Templates',
-        'AI Prompt Library 2025'
+        'AI Prompt Library 2026'
       ]
     };
   }, []);
@@ -415,19 +445,22 @@ const App: React.FC = () => {
               </div>
               <div className="md:col-span-4 space-y-8">
                 <div className="space-y-2">
-                  <h2 className="text-xl font-black flex items-center gap-3"><TrendingUp size={20} /> News Feed</h2>
-                  <p className="text-[#888] text-xs font-medium uppercase tracking-widest">Real-time Space Updates</p>
+                  <h2 className="text-xl font-black flex items-center gap-3"><Newspaper size={20} /> Latest AI News</h2>
+                  <p className="text-[#888] text-xs font-medium uppercase tracking-widest">Real-time AI Updates</p>
                 </div>
                 <div className="space-y-4">
-                  {trendingNews.map(item => (
-                    <div key={item.id} className="p-4 rounded-lg bg-[#0a0a0a] border border-[#1f1f1f] hover:border-[#333] transition-all cursor-pointer group">
-                      <p className="text-xs font-bold text-[#eee] group-hover:text-white mb-2 leading-relaxed">{item.title}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-[#444] font-black uppercase tracking-tighter">{item.source}</span>
-                        <span className="text-[10px] text-[#444] font-black uppercase tracking-tighter">{item.time}</span>
-                      </div>
+                  {newsLoading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="animate-spin text-electric-blue mx-auto mb-2" size={20} />
+                      <p className="text-[#666] text-xs">Loading news...</p>
                     </div>
-                  ))}
+                  ) : newsArticles.length > 0 ? (
+                    newsArticles.slice(0, 5).map((article: NewsArticle) => (
+                      <NewsCard key={article.id} article={article} variant="compact" />
+                    ))
+                  ) : (
+                    <p className="text-[#666] text-xs text-center py-4">No news available. News will be fetched automatically.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -438,8 +471,24 @@ const App: React.FC = () => {
           <div className="space-y-12 animate-in fade-in duration-500 max-w-5xl mx-auto pt-8">
             <div className="space-y-2">
               <h2 className="text-3xl font-black flex items-center gap-3"><Award className="text-yellow-500" /> AI Tool Ranking Site</h2>
-              <p className="text-[#888] text-sm font-medium">Best AI tools 2025 based on audited performance metrics.</p>
+              <p className="text-[#888] text-sm font-medium">Best AI tools 2026 based on audited performance metrics.</p>
             </div>
+            
+            {/* News Section in Leaderboard */}
+            {newsArticles.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-xl font-black flex items-center gap-2">
+                  <Newspaper size={20} className="text-electric-blue" />
+                  Trending AI News
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {newsArticles.slice(0, 6).map((article: NewsArticle) => (
+                    <NewsCard key={article.id} article={article} variant="compact" />
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {categories.map(cat => (
                 <div key={cat} className="bg-[#0a0a0a] p-6 rounded-lg border border-[#1f1f1f]">
@@ -474,29 +523,74 @@ const App: React.FC = () => {
         return (
           <div className={`space-y-12 animate-in fade-in duration-500 max-w-6xl mx-auto ${fatigueMode ? 'pt-8' : ''}`}>
             {!fatigueMode && (
-              <div className="relative space-y-6 py-12 text-center border-b border-[#1f1f1f]">
-                <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  <span className="gradient-text">Be the First to Discover the AI Tools Shaping 2025</span>
-                </h1>
-                <p className="text-[#888] text-sm md:text-base max-w-xl mx-auto font-medium">
-                  The definitive <span className="text-white">AI tool directory</span> curated for solo-hackers.
-                </p>
-                <div className="max-w-xl mx-auto relative pt-4">
-                  <div className="relative bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-1 flex items-center focus-within:border-[#333] transition-colors">
-                    <input 
-                      type="text" 
-                      placeholder="Search AI tool directory..."
-                      className="flex-1 bg-transparent py-2.5 px-4 focus:outline-none text-sm placeholder:text-[#444]"
-                      value={heroQuery}
-                      onChange={(e) => setHeroQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleHeroSubmit()}
-                    />
-                    <button onClick={handleHeroSubmit} className="bg-white text-black px-4 py-2 rounded text-xs font-bold hover:bg-[#eee] transition-all flex items-center gap-2">
-                      Scan <ArrowRight size={14} />
-                    </button>
+              <>
+                <div className="relative space-y-6 py-12 text-center border-b border-[#1f1f1f]">
+                  <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                    <span className="gradient-text">Be the First to Discover the AI Tools Shaping 2026</span>
+                  </h1>
+                  <p className="text-[#888] text-sm md:text-base max-w-xl mx-auto font-medium">
+                    The definitive <span className="text-white">AI tool directory</span> curated for solo-hackers.
+                  </p>
+                  <div className="max-w-xl mx-auto relative pt-4">
+                    <div className="relative bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-1 flex items-center focus-within:border-[#333] transition-colors">
+                      <input 
+                        type="text" 
+                        placeholder="Search AI tool directory..."
+                        className="flex-1 bg-transparent py-2.5 px-4 focus:outline-none text-sm placeholder:text-[#444]"
+                        value={heroQuery}
+                        onChange={(e) => setHeroQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleHeroSubmit()}
+                      />
+                      <button onClick={handleHeroSubmit} className="bg-white text-black px-4 py-2 rounded text-xs font-bold hover:bg-[#eee] transition-all flex items-center gap-2">
+                        Scan <ArrowRight size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+
+                {/* Featured News Section */}
+                {featuredNews.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-2xl font-black flex items-center gap-2">
+                        <Newspaper size={24} className="text-electric-blue" />
+                        Featured AI News
+                      </h2>
+                    </div>
+                    <div className="space-y-3">
+                      {featuredNews.map((article: NewsArticle) => (
+                        <NewsCard key={article.id} article={article} variant="row" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Regular News Section */}
+                {regularNews.length > 0 ? (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-black flex items-center gap-2">
+                      <TrendingUp size={20} />
+                      Latest Updates
+                    </h2>
+                    <div className="space-y-3">
+                      {regularNews.map((article: NewsArticle) => (
+                        <NewsCard key={article.id} article={article} variant="row" />
+                      ))}
+                    </div>
+                  </div>
+                ) : !newsLoading && newsArticles.length === 0 && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-black flex items-center gap-2">
+                      <Newspaper size={20} />
+                      Latest AI News
+                    </h2>
+                    <div className="bg-[#0a0a0a] border border-[#1f1f1f] rounded-lg p-8 text-center">
+                      <p className="text-[#666] text-sm mb-2">No news articles yet.</p>
+                      <p className="text-[#444] text-xs">News will be automatically fetched daily. Check back soon!</p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="space-y-8">
@@ -576,7 +670,7 @@ const App: React.FC = () => {
       {toolsDataset.length > 0 && (
         <ToolListStructuredData
           tools={toolsDataset}
-          title="Best AI Tools Directory 2025"
+          title="Best AI Tools Directory 2026"
           description="Comprehensive directory of 600+ AI tools including ChatGPT alternatives, writing tools, design tools, and more."
         />
       )}
@@ -812,7 +906,7 @@ const App: React.FC = () => {
               </div>
               <div className="space-y-3">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter">Upvote.</h3>
-                <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2025</span>.</p>
+                <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2026</span>.</p>
               </div>
               <button 
                 onClick={async () => { 

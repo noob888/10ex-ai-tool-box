@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { SEOSection } from '@/components/SEOPages';
 import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { Category } from '@/types';
@@ -9,15 +10,15 @@ type Props = {
 
 // Map slugs to keywords
 const slugToKeyword: Record<string, string> = {
-  'top-chatgpt-alternatives-in-2025': 'Top ChatGPT Alternatives in 2025',
-  'best-ai-writing-tools-2025': 'Best AI Writing Tools 2025',
+  'top-chatgpt-alternatives-in-2026': 'Top ChatGPT Alternatives in 2026',
+  'best-ai-writing-tools-2026': 'Best AI Writing Tools 2026',
   'free-ai-tools-for-startups': 'Free AI Tools for Startups',
   'best-ai-tools-comparison': 'Best AI Tools Comparison',
   'ai-design-tools-for-creators': 'AI Design Tools for Creators',
-  'best-ai-coding-tools-2025': 'Best AI Coding Tools 2025',
+  'best-ai-coding-tools-2026': 'Best AI Coding Tools 2026',
   'ai-video-generation-tools': 'AI Video Generation Tools',
   'ai-marketing-tools-for-business': 'AI Marketing Tools for Business',
-  'ai-research-tools-2025': 'AI Research Tools 2025',
+  'ai-research-tools-2026': 'AI Research Tools 2026',
   'ai-sales-tools-outreach': 'AI Sales Tools & Outreach',
   'ai-productivity-tools': 'AI Productivity Tools',
   'ai-automation-tools': 'AI Automation Tools',
@@ -69,25 +70,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
   
   return {
-    title: `Best ${keyword} for 2025`,
-    description: `Discover the best ${keyword.toLowerCase()} in 2025. We've audited 600+ AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`,
+    title: `Best ${keyword} for 2026`,
+    description: `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`,
     keywords: [
       keyword,
       'AI tools',
-      'best AI tools 2025',
+      'best AI tools 2026',
       'AI tool comparison',
       'AI tool reviews',
     ],
     openGraph: {
-      title: `Best ${keyword} for 2025`,
-      description: `Discover the best ${keyword.toLowerCase()} in 2025. We've audited 600+ AI tools to bring you the top performing options.`,
+      title: `Best ${keyword} for 2026`,
+      description: `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options.`,
       type: 'website',
       url: `${baseUrl}/seo/${slug}`,
     },
     twitter: {
       card: 'summary_large_image',
-      title: `Best ${keyword} for 2025`,
-      description: `Discover the best ${keyword.toLowerCase()} in 2025.`,
+      title: `Best ${keyword} for 2026`,
+      description: `Discover the best ${keyword.toLowerCase()} in 2026.`,
     },
     alternates: {
       canonical: `${baseUrl}/seo/${slug}`,
@@ -97,17 +98,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SEOPage({ params }: Props) {
   const { slug } = await params;
+  
+  // Validate slug - return 404 for invalid slugs
+  if (!slugToKeyword[slug] && !slug.match(/^[a-z0-9-]+$/)) {
+    notFound();
+  }
+  
   const keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
   const toolsRepo = new ToolsRepository();
   const allTools = await toolsRepo.findAll();
   const filteredTools = getFilteredToolsForSEO(keyword, allTools);
+  
+  // Return 404 if no tools found for this slug
+  if (filteredTools.length === 0 && !slugToKeyword[slug]) {
+    notFound();
+  }
 
   // Generate structured data
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": `Best ${keyword} for 2025`,
-    "description": `Comprehensive list of the best ${keyword.toLowerCase()} in 2025`,
+    "name": `Best ${keyword} for 2026`,
+    "description": `Comprehensive list of the best ${keyword.toLowerCase()} in 2026`,
     "mainEntity": {
       "@type": "ItemList",
       "numberOfItems": filteredTools.length,

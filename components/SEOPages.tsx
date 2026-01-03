@@ -37,7 +37,7 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
 
       <div className="space-y-4">
         <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
-          Best <span className="text-white">{keyword}</span> for 2025
+          Best <span className="text-white">{keyword}</span> for 2026
         </h1>
         <p className="text-[#888] text-base leading-relaxed max-w-3xl">
           Don't settle for marketing hype. We audited 600+ AI tools to bring you the top performing {keyword.toLowerCase()} based on latency, output quality, and cost-efficiency.

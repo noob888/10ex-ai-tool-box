@@ -12,13 +12,19 @@ async function runMigrations() {
   const pool = getDatabasePool();
 
   try {
-    // Read migration file
-    const migrationPath = join(process.cwd(), 'database/migrations/001_initial_schema.sql');
-    const migrationSQL = readFileSync(migrationPath, 'utf-8');
+    // Run initial schema migration
+    const initialMigrationPath = join(process.cwd(), 'database/migrations/001_initial_schema.sql');
+    const initialMigrationSQL = readFileSync(initialMigrationPath, 'utf-8');
+    await pool.query(initialMigrationSQL);
+    console.log('✓ Initial schema migration completed');
 
-    // Execute migration
-    await pool.query(migrationSQL);
-    console.log('Migration completed successfully!');
+    // Run news table migration
+    const newsMigrationPath = join(process.cwd(), 'database/migrations/002_add_news_table.sql');
+    const newsMigrationSQL = readFileSync(newsMigrationPath, 'utf-8');
+    await pool.query(newsMigrationSQL);
+    console.log('✓ News table migration completed');
+
+    console.log('All migrations completed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);
     throw error;

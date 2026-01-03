@@ -70,6 +70,7 @@ The database uses PostgreSQL with the following main tables:
 
 ### Loosely Coupled Architecture
 - Database layer is completely separate from the app
+- Database should be seperate from 10ex main app with toobox prefix 
 - Repository pattern for data access
 - Easy to swap database implementations
 - Clear separation of concerns

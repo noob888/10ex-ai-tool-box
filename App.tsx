@@ -63,19 +63,19 @@ const App: React.FC = () => {
   const footerSEOLinks = useMemo(() => {
     return {
       toolBox: [
-        'Top ChatGPT Alternatives in 2025',
-        'Best AI Writing Tools 2025',
+        'Top ChatGPT Alternatives in 2026',
+        'Best AI Writing Tools 2026',
         'Free AI Tools for Startups',
         'Best AI Tools Comparison'
       ],
       directory: [
         'AI Design Tools for Creators',
-        'Best AI Coding Tools 2025',
+        'Best AI Coding Tools 2026',
         'AI Video Generation Tools',
         'AI Marketing Tools for Business'
       ],
       engine: [
-        'AI Research Tools 2025',
+        'AI Research Tools 2026',
         'AI Sales Tools & Outreach',
         'AI Productivity Tools',
         'AI Automation Tools'
@@ -83,7 +83,7 @@ const App: React.FC = () => {
       prompts: [
         'ChatGPT Prompt Templates',
         'SEO Prompt Templates',
-        'AI Prompt Library 2025'
+        'AI Prompt Library 2026'
       ]
     };
   }, []);
@@ -321,7 +321,7 @@ const App: React.FC = () => {
           <div className="space-y-12 animate-in fade-in duration-500 max-w-5xl mx-auto pt-8">
             <div className="space-y-2">
               <h2 className="text-3xl font-black flex items-center gap-3"><Award className="text-yellow-500" /> AI Tool Ranking Site</h2>
-              <p className="text-[#888] text-sm font-medium">Best AI tools 2025 based on audited performance metrics.</p>
+              <p className="text-[#888] text-sm font-medium">Best AI tools 2026 based on audited performance metrics.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {categories.map(cat => (
@@ -359,7 +359,7 @@ const App: React.FC = () => {
             {!fatigueMode && (
               <div className="relative space-y-6 py-12 text-center border-b border-[#1f1f1f]">
                 <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                  <span className="gradient-text">Be the First to Discover the AI Tools Shaping 2025</span>
+                  <span className="gradient-text">Be the First to Discover the AI Tools Shaping 2026</span>
                 </h1>
                 <p className="text-[#888] text-sm md:text-base max-w-xl mx-auto font-medium">
                   The definitive <span className="text-white">AI tool directory</span> curated for solo-hackers.
@@ -651,7 +651,7 @@ const App: React.FC = () => {
               <Rocket size={40} />
             </div>
             <div className="space-y-3">
-              <h3 className="text-3xl font-black text-white leading-tight uppercase italic tracking-tighter">viral multiplier.</h3>
+              <h3 className="text-3xl font-black text-white leading-tight uppercase italic tracking-tighter">Let your friends in on the secret.</h3>
               <p className="text-[#888] text-sm leading-relaxed">Refer 2 friends to unlock the <span className="text-white">Pro Prompt Hub</span> and <span className="text-white">Exclusive Comparison Stats</span>.</p>
             </div>
             <div className="p-5 rounded border border-dashed border-[#1f1f1f] bg-black space-y-4">
@@ -675,7 +675,7 @@ const App: React.FC = () => {
               </div>
               <div className="space-y-3">
                 <h3 className="text-2xl font-black uppercase italic tracking-tighter">Upvote.</h3>
-                <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2025</span>.</p>
+                <p className="text-[#666] text-xs font-medium leading-relaxed">Help thousands find the <span className="text-white">Best AI tools 2026</span>.</p>
               </div>
               <button 
                 onClick={() => { setShowLeadModal(false); if(user) setUser({...user, points: user.points + 5}); }}

@@ -64,6 +64,24 @@ export interface DatabaseStack {
   updated_at: Date;
 }
 
+export interface DatabaseNews {
+  id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  source: string;
+  author: string | null;
+  image_url: string | null;
+  published_at: Date;
+  fetched_at: Date;
+  category: string;
+  tags: string[];
+  view_count: number;
+  is_featured: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
 // SQL schema creation queries
 export const createTablesSQL = `
 -- Users table

@@ -26,7 +26,9 @@ export function getDatabasePool(): Pool {
       },
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 15000, // 15 seconds for production DB
+      // Note: pg Pool doesn't support query_timeout directly
+      // We handle timeouts in application code with retries
     });
 
     // Handle pool errors
