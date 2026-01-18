@@ -496,8 +496,8 @@ Return ONLY valid JSON, no additional text.`;
 }
 
 /**
- * Generate featured image using Gemini Nano Banana (AI image generation)
- * Uses gemini-2.5-flash-image for fast, high-quality image generation
+ * Generate featured image using Gemini and upload to S3
+ * Returns S3 URL (never base64 data URI)
  */
 async function generateFeaturedImage(keyword: string): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -508,6 +508,9 @@ async function generateFeaturedImage(keyword: string): Promise<string | null> {
   }
 
   try {
+    // Import S3 service
+    const { uploadImageToS3, generateImageFilename } = await import('./s3Service');
+    
     // Create a descriptive prompt for the featured image
     const imagePrompt = `Create a professional, modern featured image for an SEO article about "${keyword}". 
     
@@ -522,10 +525,9 @@ Requirements:
 
 Style: Modern tech, minimalist, clean, professional`;
 
-    console.log(`   🎨 Generating AI image with Nano Banana...`);
+    console.log(`   🎨 Generating AI image with Gemini...`);
 
-    // Use Gemini REST API directly for image generation
-    // The SDK might not support image generation models yet, so we use REST API
+    // Use Gemini REST API for image generation
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
@@ -554,17 +556,25 @@ Style: Modern tech, minimalist, clean, professional`;
         const data = await response.json();
         
         // Extract image from response
-        // The response structure: data.candidates[0].content.parts[0].inlineData
         if (data.candidates && data.candidates[0]?.content?.parts) {
           const parts = data.candidates[0].content.parts;
           const imagePart = parts.find((p: any) => p.inlineData);
           
           if (imagePart?.inlineData?.data) {
-            const base64Image = imagePart.inlineData.data;
+            const base64Data = imagePart.inlineData.data; // This is already base64 string (not data URI)
             const mimeType = imagePart.inlineData.mimeType || 'image/png';
-            const imageUrl = `data:${mimeType};base64,${base64Image}`;
-            console.log(`   ✅ AI image generated successfully with Nano Banana`);
-            return imageUrl;
+            
+            // Upload to S3 instead of using base64 data URI
+            console.log(`   📤 Uploading image to S3...`);
+            const filename = generateImageFilename(keyword, mimeType.split('/')[1] || 'png');
+            const s3Url = await uploadImageToS3(base64Data, filename, mimeType);
+            
+            if (s3Url) {
+              console.log(`   ✅ Image uploaded to S3: ${s3Url}`);
+              return s3Url;
+            } else {
+              console.warn(`   ⚠️  S3 upload failed, falling back to Unsplash`);
+            }
           }
         }
         
@@ -575,40 +585,42 @@ Style: Modern tech, minimalist, clean, professional`;
       }
     } catch (apiError: any) {
       console.warn(`   ⚠️  Image generation API call failed: ${apiError?.message || 'Unknown error'}`);
-      
-      // Try fallback to Unsplash if available
-      const unsplashAccessKey = process.env.UNSPLASH_ACCESS_KEY;
-      if (unsplashAccessKey) {
-        try {
-          const searchQuery = keyword.toLowerCase()
-            .replace(/best |top |for |in |2026|ai |tools?/g, '')
-            .replace(/\s+/g, '-')
-            .substring(0, 50);
-          
-          const response = await fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=1&orientation=landscape`,
-            {
-              headers: {
-                'Authorization': `Client-ID ${unsplashAccessKey}`,
-              },
-            }
-          );
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-              console.log(`   ✅ Using Unsplash image as fallback`);
-              return data.results[0].urls.regular;
-            }
+    }
+    
+    // Fallback to Unsplash if available
+    const unsplashAccessKey = process.env.UNSPLASH_ACCESS_KEY;
+    if (unsplashAccessKey) {
+      try {
+        const searchQuery = keyword.toLowerCase()
+          .replace(/best |top |for |in |2026|ai |tools?/g, '')
+          .replace(/\s+/g, '-')
+          .substring(0, 50);
+        
+        console.log(`   🖼️  Fetching image from Unsplash for: ${searchQuery}`);
+        
+        const response = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(searchQuery)}&per_page=1&orientation=landscape`,
+          {
+            headers: {
+              'Authorization': `Client-ID ${unsplashAccessKey}`,
+            },
           }
-        } catch (unsplashError) {
-          console.warn('Unsplash fallback also failed:', unsplashError);
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            console.log(`   ✅ Using Unsplash image`);
+            return data.results[0].urls.regular;
+          }
         }
+      } catch (unsplashError) {
+        console.warn('Unsplash fetch failed:', unsplashError);
       }
     }
 
-    // Final fallback to placeholder
-    console.log(`   ⚠️  Using placeholder image`);
+    // Final fallback to placeholder (external URL, never base64)
+    console.log(`   ⚠️  Using placeholder image (external URL)`);
     return getPlaceholderImage(keyword);
     
   } catch (error) {

@@ -30,13 +30,52 @@ Add to `.env.local` or Amplify environment variables:
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here  # Already configured for news agent
 CRON_SECRET=your_cron_secret_here  # Optional but recommended
-UNSPLASH_ACCESS_KEY=your_unsplash_key  # Optional - for better featured images
+
+# S3 Configuration (for storing AI-generated images)
+AWS_S3_BUCKET_NAME=your-bucket-name  # Required for AI-generated images
+AWS_REGION=us-east-1  # Your S3 bucket region
+AWS_ACCESS_KEY_ID=your_access_key  # AWS credentials
+AWS_SECRET_ACCESS_KEY=your_secret_key  # AWS credentials
+
+# Optional: Unsplash for fallback images
+UNSPLASH_ACCESS_KEY=your_unsplash_key  # Optional - for fallback images
 ```
 
 **Note:** Uses the same `GEMINI_API_KEY` as the news agent - no additional API key needed!
 
-**Optional:** Add `UNSPLASH_ACCESS_KEY` for high-quality featured images. Get it from: https://unsplash.com/developers
-Without it, the agent will use placeholder images (still works fine).
+**S3 Setup (Required for AI-generated images):**
+1. Create an S3 bucket in AWS Console
+2. Enable public read access for the `10ex-ai-toolbox/` prefix
+3. Add bucket policy:
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "PublicReadGetObject",
+         "Effect": "Allow",
+         "Principal": "*",
+         "Action": "s3:GetObject",
+         "Resource": "arn:aws:s3:::your-bucket-name/10ex-ai-toolbox/*"
+       }
+     ]
+   }
+   ```
+4. Add AWS credentials to environment variables
+
+**Migrating Existing Base64 Images:**
+If you have existing SEO pages with base64 images, run the cleanup script to upload them to S3:
+```bash
+npm run db:cleanup-base64-images
+```
+This will:
+- Find all pages with base64 data URI images
+- Upload each image to S3 in the `10ex-ai-toolbox/` folder
+- Update the database with S3 URLs
+- Fall back to placeholder images if S3 upload fails
+
+**Optional:** Add `UNSPLASH_ACCESS_KEY` for fallback images if S3 upload fails. Get it from: https://unsplash.com/developers
+Without S3 or Unsplash, the agent will use placeholder images (still works fine).
 
 ### 3. Run Database Migration
 
