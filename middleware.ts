@@ -26,13 +26,21 @@ const queryToSlugMap: Record<string, string> = {
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Redirect old /seo/ URLs to /blog/
+  if (pathname.startsWith('/seo/')) {
+    const slug = pathname.replace('/seo/', '');
+    const url = request.nextUrl.clone();
+    url.pathname = `/blog/${slug}`;
+    return NextResponse.redirect(url, 301); // Permanent redirect for SEO
+  }
+
   // Handle query parameter redirects (e.g., /?q=best-ai-tools-2026)
   const queryParam = searchParams.get('q');
   if (queryParam && pathname === '/') {
     const slug = queryToSlugMap[queryParam];
     if (slug) {
       const url = request.nextUrl.clone();
-      url.pathname = `/seo/${slug}`;
+      url.pathname = `/blog/${slug}`;
       url.search = ''; // Remove query parameters
       return NextResponse.redirect(url, 301); // Permanent redirect for SEO
     }

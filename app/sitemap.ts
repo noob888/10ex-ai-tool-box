@@ -44,6 +44,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
   ];
 
   // Add SEO pages
@@ -64,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   seoKeywords.forEach(keyword => {
     routes.push({
-      url: `${baseUrl}/seo/${keyword}`,
+      url: `${baseUrl}/blog/${keyword}`,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.8,
@@ -90,12 +96,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           ]) as any[];
           
           seoPages.forEach(page => {
-            routes.push({
-              url: `${baseUrl}/seo/${page.slug}`,
-              lastModified: new Date(page.updatedAt || page.createdAt),
-              changeFrequency: 'weekly',
-              priority: 0.8,
-            });
+                routes.push({
+                  url: `${baseUrl}/blog/${page.slug}`,
+                  lastModified: new Date(page.updatedAt || page.createdAt),
+                  changeFrequency: 'weekly',
+                  priority: 0.8,
+                });
           });
         } finally {
           if (client && typeof client.release === 'function') {

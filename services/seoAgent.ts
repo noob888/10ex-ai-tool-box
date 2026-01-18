@@ -754,7 +754,7 @@ export async function generateSEOPages(): Promise<{ researched: number; generate
 
         // Generate canonical URL
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
-        const canonicalUrl = `${baseUrl}/seo/${opportunity.slug}`;
+        const canonicalUrl = `${baseUrl}/blog/${opportunity.slug}`;
 
         // Save to database
         await seoPagesRepo.upsert({

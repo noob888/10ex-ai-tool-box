@@ -25,6 +25,11 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
     { id: 'prompts', label: 'Library', icon: BookOpen },
   ];
 
+  const handleBlogClick = () => {
+    router.push('/blog');
+    setIsMobileMenuOpen(false);
+  };
+
   const handleTabClick = (id: string) => {
     setActiveTab(id);
     setIsMobileMenuOpen(false);
@@ -62,6 +67,13 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
       </div>
 
       <div className="flex items-center gap-3">
+        <button 
+          onClick={handleBlogClick}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest text-[#888] hover:text-white hover:bg-[#111]"
+        >
+          <BookOpen size={12} />
+          Blog
+        </button>
         <button 
           onClick={() => router.push('/news')}
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest text-[#888] hover:text-white hover:bg-[#111]"
@@ -110,6 +122,13 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
                 </button>
               );
             })}
+            <button
+              onClick={handleBlogClick}
+              className="flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold transition-all w-full text-left text-[#888] hover:text-white"
+            >
+              <BookOpen size={16} />
+              Blog
+            </button>
             <button
               onClick={() => {
                 router.push('/news');

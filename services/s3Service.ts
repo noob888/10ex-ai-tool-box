@@ -1,9 +1,9 @@
 // S3 Service for uploading images
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-// Support both AWS_ and S3_ prefixes for environment variables
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
-const BUCKET_REGION = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
+// Support multiple environment variable naming conventions
+const BUCKET_NAME = process.env.S3_STORAGE_BUCKET_NAME || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
+const BUCKET_REGION = process.env.S3_REGION_NAME || process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
 const ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
 const SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 
@@ -19,14 +19,14 @@ export async function uploadImageToS3(
   contentType: string = 'image/png'
 ): Promise<string | null> {
   // Read env vars dynamically (not at module load time) to support dotenv loading
-  // Support both S3_ and AWS_ prefixes
-  const bucketName = process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
-  const bucketRegion = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
+  // Support multiple naming conventions
+  const bucketName = process.env.S3_STORAGE_BUCKET_NAME || process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
+  const bucketRegion = process.env.S3_REGION_NAME || process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
   const accessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
   const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
   
   if (!bucketName) {
-    console.warn('S3_BUCKET_NAME or AWS_S3_BUCKET_NAME not configured, skipping S3 upload');
+    console.warn('S3_STORAGE_BUCKET_NAME, S3_BUCKET_NAME, or AWS_S3_BUCKET_NAME not configured, skipping S3 upload');
     return null;
   }
 
@@ -55,12 +55,13 @@ export async function uploadImageToS3(
     const key = `10ex-ai-toolbox/${filename}`;
 
     // Upload to S3
+    // Note: ACL is removed as modern S3 buckets have ACLs disabled by default
+    // Use bucket policy for public access instead
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: key,
       Body: buffer,
       ContentType: contentType,
-      ACL: 'public-read', // Make image publicly accessible
     });
 
     await client.send(command);

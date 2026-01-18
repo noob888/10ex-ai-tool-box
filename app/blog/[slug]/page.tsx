@@ -93,7 +93,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       type: 'website',
-      url: `${baseUrl}/seo/${slug}`,
+      url: `${baseUrl}/blog/${slug}`,
       images: featuredImage ? [
         {
           url: featuredImage,
@@ -110,7 +110,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: featuredImage ? [featuredImage] : undefined,
     },
     alternates: {
-      canonical: seoPage?.canonicalUrl || `${baseUrl}/seo/${slug}`,
+      canonical: seoPage?.canonicalUrl || `${baseUrl}/blog/${slug}`,
     },
   };
 }
