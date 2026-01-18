@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Zap, LayoutGrid, Award, MessageSquare, BookOpen, ShieldCheck, Menu, X, Flame } from 'lucide-react';
+import { Box, Zap, LayoutGrid, Award, MessageSquare, BookOpen, ShieldCheck, Menu, X, Flame, Newspaper } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   activeTab: string;
@@ -13,6 +14,7 @@ interface Props {
 
 export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMode, setFatigueMode, onOpenCategories }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter();
 
   const tabs = [
     { id: 'discover', label: 'Explore', icon: LayoutGrid },
@@ -61,6 +63,14 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
 
       <div className="flex items-center gap-3">
         <button 
+          onClick={() => router.push('/news')}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest text-[#888] hover:text-white hover:bg-[#111]"
+        >
+          <Newspaper size={12} />
+          News
+        </button>
+        
+        <button 
           onClick={() => setFatigueMode(!fatigueMode)}
           className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest ${
             fatigueMode 
@@ -100,6 +110,16 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
                 </button>
               );
             })}
+            <button
+              onClick={() => {
+                router.push('/news');
+                setIsMobileMenuOpen(false);
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold transition-all w-full text-left text-[#888] hover:text-white"
+            >
+              <Newspaper size={16} />
+              News
+            </button>
           </div>
         </div>
       )}

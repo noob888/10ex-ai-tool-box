@@ -152,9 +152,9 @@ const App: React.FC = () => {
     }
   }, [seoTarget]);
 
-  // Get featured and regular news
-  const featuredNews = newsArticles.filter((article: NewsArticle) => article.isFeatured).slice(0, 3);
-  const regularNews = newsArticles.filter((article: NewsArticle) => !article.isFeatured).slice(0, 6);
+  // Get featured and regular news (limited for landing page)
+  const featuredNews = newsArticles.filter((article: NewsArticle) => article.isFeatured).slice(0, 2);
+  const regularNews = newsArticles.filter((article: NewsArticle) => !article.isFeatured).slice(0, 2);
 
   const categories = Object.values(Category);
 
@@ -556,6 +556,12 @@ const App: React.FC = () => {
                         <Newspaper size={24} className="text-electric-blue" />
                         Featured AI News
                       </h2>
+                      <a 
+                        href="/news" 
+                        className="text-xs font-bold text-[#666] hover:text-electric-blue transition-colors flex items-center gap-1"
+                      >
+                        View All <ArrowRight size={12} />
+                      </a>
                     </div>
                     <div className="space-y-3">
                       {featuredNews.map((article: NewsArticle) => (
@@ -568,10 +574,18 @@ const App: React.FC = () => {
                 {/* Regular News Section */}
                 {regularNews.length > 0 ? (
                   <div className="space-y-4">
-                    <h2 className="text-xl font-black flex items-center gap-2">
-                      <TrendingUp size={20} />
-                      Latest Updates
-                    </h2>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-xl font-black flex items-center gap-2">
+                        <TrendingUp size={20} />
+                        Latest Updates
+                      </h2>
+                      <a 
+                        href="/news" 
+                        className="text-xs font-bold text-[#666] hover:text-electric-blue transition-colors flex items-center gap-1"
+                      >
+                        View All <ArrowRight size={12} />
+                      </a>
+                    </div>
                     <div className="space-y-3">
                       {regularNews.map((article: NewsArticle) => (
                         <NewsCard key={article.id} article={article} variant="row" />

@@ -25,44 +25,33 @@ const slugToKeyword: Record<string, string> = {
   'ai-automation-tools': 'AI Automation Tools',
 };
 
-function getFilteredToolsForSEO(keyword: string, allTools: any[]): any[] {
+/**
+ * Get category from keyword (for optimized queries)
+ */
+function getCategoryFromKeyword(keyword: string): Category | null {
   const lowerKeyword = keyword.toLowerCase();
   
-  if (lowerKeyword.includes('chatgpt alternative') || lowerKeyword.includes('chatgpt alternatives')) {
-    const chatgpt = allTools.find(t => t.id === 'chatgpt' || t.name.toLowerCase().includes('chatgpt'));
-    if (chatgpt) {
-      return allTools
-        .filter(t => t.category === chatgpt.category && t.id !== chatgpt.id)
-        .sort((a, b) => b.rating - a.rating);
-    }
-    return allTools.filter(t => t.category === Category.WRITING).sort((a, b) => b.rating - a.rating);
-  } else if (lowerKeyword.includes('writing tool')) {
-    return allTools.filter(t => t.category === Category.WRITING).sort((a, b) => b.rating - a.rating);
+  if (lowerKeyword.includes('chatgpt alternative') || lowerKeyword.includes('chatgpt alternatives') || lowerKeyword.includes('writing tool')) {
+    return Category.WRITING;
   } else if (lowerKeyword.includes('design tool')) {
-    return allTools.filter(t => t.category === Category.DESIGN).sort((a, b) => b.rating - a.rating);
+    return Category.DESIGN;
   } else if (lowerKeyword.includes('coding tool')) {
-    return allTools.filter(t => t.category === Category.CODING).sort((a, b) => b.rating - a.rating);
+    return Category.CODING;
   } else if (lowerKeyword.includes('video tool')) {
-    return allTools.filter(t => t.category === Category.VIDEO).sort((a, b) => b.rating - a.rating);
+    return Category.VIDEO;
   } else if (lowerKeyword.includes('marketing tool')) {
-    return allTools.filter(t => t.category === Category.MARKETING).sort((a, b) => b.rating - a.rating);
+    return Category.MARKETING;
   } else if (lowerKeyword.includes('research tool')) {
-    return allTools.filter(t => t.category === Category.RESEARCH).sort((a, b) => b.rating - a.rating);
+    return Category.RESEARCH;
   } else if (lowerKeyword.includes('sales tool')) {
-    return allTools.filter(t => t.category === Category.SALES).sort((a, b) => b.rating - a.rating);
+    return Category.SALES;
   } else if (lowerKeyword.includes('productivity tool')) {
-    return allTools.filter(t => t.category === Category.PRODUCTIVITY).sort((a, b) => b.rating - a.rating);
+    return Category.PRODUCTIVITY;
   } else if (lowerKeyword.includes('automation tool')) {
-    return allTools.filter(t => t.category === Category.AUTOMATION).sort((a, b) => b.rating - a.rating);
-  } else if (lowerKeyword.includes('free tool')) {
-    return allTools.filter(t => t.pricing === 'Free').sort((a, b) => b.rating - a.rating);
+    return Category.AUTOMATION;
   }
   
-  return allTools.filter(t => 
-    t.name.toLowerCase().includes(lowerKeyword) ||
-    t.tagline.toLowerCase().includes(lowerKeyword) ||
-    t.category.toLowerCase().includes(lowerKeyword)
-  ).sort((a, b) => b.rating - a.rating);
+  return null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -141,46 +130,58 @@ export default async function SEOPage({ params }: Props) {
   let keyword: string;
   let filteredTools: any[];
   
+  const toolsRepo = new ToolsRepository();
+  const MAX_TOOLS = 10; // Limit to top 10 tools for SEO pages
+
   if (seoPage && seoPage.isPublished) {
     // Use dynamically generated page
     keyword = seoPage.keyword;
-    const toolsRepo = new ToolsRepository();
-    const allTools = await toolsRepo.findAll();
-    // Get tools by IDs from SEO page
-    filteredTools = allTools.filter(t => seoPage.relatedToolIds.includes(t.id));
-    // If no tools found by ID, fall back to keyword matching
-    if (filteredTools.length === 0) {
-      filteredTools = getFilteredToolsForSEO(keyword, allTools);
+    
+    // Optimize: Query only the related tools by IDs (don't load all tools)
+    if (seoPage.relatedToolIds && seoPage.relatedToolIds.length > 0) {
+      filteredTools = await toolsRepo.findByIds(seoPage.relatedToolIds);
+      // Limit to top 100
+      filteredTools = filteredTools.slice(0, MAX_TOOLS);
+    } else {
+      // Fallback: Query by category if available
+      const category = getCategoryFromKeyword(keyword);
+      if (category) {
+        filteredTools = await toolsRepo.findAll({ category, limit: MAX_TOOLS });
+      } else {
+        // Last resort: Search with limit
+        filteredTools = await toolsRepo.findAll({ search: keyword, limit: MAX_TOOLS });
+      }
     }
   } else {
     // Fall back to static keyword mapping
     if (!slugToKeyword[slug]) {
       // If not in static mapping, try to generate keyword from slug
-      // This allows dynamically generated pages to work even if DB lookup fails
       keyword = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      const toolsRepo = new ToolsRepository();
-      const allTools = await toolsRepo.findAll();
-      filteredTools = getFilteredToolsForSEO(keyword, allTools);
-      
-      // Return 404 only if no tools found
-      if (filteredTools.length === 0) {
-        notFound();
-      }
     } else {
       keyword = slugToKeyword[slug];
-      const toolsRepo = new ToolsRepository();
-      const allTools = await toolsRepo.findAll();
-      filteredTools = getFilteredToolsForSEO(keyword, allTools);
-      
-      // Return 404 if no tools found for this slug
-      if (filteredTools.length === 0) {
-        notFound();
-      }
+    }
+    
+    // Optimize: Query by category or search with limit
+    const category = getCategoryFromKeyword(keyword);
+    if (category) {
+      filteredTools = await toolsRepo.findAll({ category, limit: MAX_TOOLS });
+    } else if (keyword.toLowerCase().includes('free')) {
+      // For "free tools", we need to search all tools but with limit
+      filteredTools = await toolsRepo.findAll({ limit: MAX_TOOLS });
+      filteredTools = filteredTools.filter(t => t.pricing === 'Free').slice(0, MAX_TOOLS);
+    } else {
+      // Search with limit
+      filteredTools = await toolsRepo.findAll({ search: keyword, limit: MAX_TOOLS });
+    }
+    
+    // Return 404 if no tools found
+    if (filteredTools.length === 0) {
+      notFound();
     }
   }
 
-  // Generate structured data
-  const structuredData = {
+  // Generate structured data (use from DB if available, otherwise generate)
+  const structuredData = seoPage?.structuredData || {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     "name": `Best ${keyword} for 2026`,

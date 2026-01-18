@@ -88,6 +88,21 @@ export class ToolsRepository {
   }
 
   /**
+   * Get tools by IDs (for SEO pages with related tools)
+   */
+  async findByIds(ids: string[]): Promise<Tool[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const pool = getDatabasePool();
+    const result = await pool.query(
+      'SELECT * FROM toolbox_tools WHERE id = ANY($1::text[]) ORDER BY rating DESC',
+      [ids]
+    );
+    return result.rows.map(this.mapToTool);
+  }
+
+  /**
    * Create or update a tool
    */
   async upsert(tool: Partial<Tool>): Promise<Tool> {
