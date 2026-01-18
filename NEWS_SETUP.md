@@ -37,39 +37,23 @@ npm install date-fns
 
 ### 3. Set Up Cron Job
 
-#### Option A: Vercel Cron (Recommended for Vercel deployments)
+**📖 For detailed cron setup instructions, see [CRON_SETUP.md](./CRON_SETUP.md)**
 
-The `vercel.json` file is already configured. Just add the `CRON_SECRET` environment variable:
+#### Quick Setup
 
+**For AWS Amplify (EventBridge):**
+1. Go to [AWS EventBridge Console](https://console.aws.amazon.com/events/)
+2. Create a rule with schedule: `0 6 * * ? *` (daily at 6 AM UTC)
+3. Set target to: `https://tools.10ex.ai/api/news/cron`
+4. Add `CRON_SECRET` environment variable in Amplify
+
+**For Vercel:**
+- Already configured in `vercel.json`
+- Just add `CRON_SECRET` environment variable
+
+**Manual Test:**
 ```bash
-# In Vercel dashboard or .env
-CRON_SECRET=your-secret-key-here
-```
-
-The cron job will run daily at 6 AM UTC.
-
-#### Option B: AWS EventBridge (For AWS Amplify)
-
-1. Go to AWS EventBridge Console
-2. Create a new rule:
-   - Name: `ai-news-fetcher`
-   - Schedule: `cron(0 6 * * ? *)` (6 AM UTC daily)
-   - Target: HTTP endpoint
-   - URL: `https://your-domain.com/api/news/cron`
-   - Headers: `Authorization: Bearer your-secret-key`
-
-3. Add environment variable in Amplify:
-   ```
-   CRON_SECRET=your-secret-key-here
-   ```
-
-#### Option C: Manual Trigger (For Testing)
-
-You can manually trigger the news fetch:
-
-```bash
-curl -X GET "https://your-domain.com/api/news/cron" \
-  -H "Authorization: Bearer your-cron-secret"
+curl https://tools.10ex.ai/api/news/cron
 ```
 
 ### 4. Configure RSS Feeds
