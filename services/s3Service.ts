@@ -1,16 +1,11 @@
 // S3 Service for uploading images
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-east-2',
-  credentials: process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY ? {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  } : undefined,
-});
-
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME || '';
-const BUCKET_REGION = process.env.AWS_REGION || 'us-east-2';
+// Support both AWS_ and S3_ prefixes for environment variables
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
+const BUCKET_REGION = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
+const ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
 
 /**
  * Upload base64 image to S3 and return public URL
@@ -23,12 +18,33 @@ export async function uploadImageToS3(
   filename: string,
   contentType: string = 'image/png'
 ): Promise<string | null> {
-  if (!BUCKET_NAME) {
-    console.warn('AWS_S3_BUCKET_NAME not configured, skipping S3 upload');
+  // Read env vars dynamically (not at module load time) to support dotenv loading
+  // Support both S3_ and AWS_ prefixes
+  const bucketName = process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET_NAME || '';
+  const bucketRegion = process.env.S3_REGION || process.env.AWS_REGION || 'us-east-2';
+  const accessKeyId = process.env.S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+  
+  if (!bucketName) {
+    console.warn('S3_BUCKET_NAME or AWS_S3_BUCKET_NAME not configured, skipping S3 upload');
+    return null;
+  }
+
+  if (!accessKeyId || !secretAccessKey) {
+    console.warn('S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY (or AWS_ equivalents) not configured, skipping S3 upload');
     return null;
   }
 
   try {
+    // Create S3 client with current env vars
+    const client = new S3Client({
+      region: bucketRegion,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+
     // Convert base64 to buffer (handle both data URI and plain base64)
     const base64Data = base64Image.includes(',') 
       ? base64Image.split(',')[1] // Extract base64 from data URI
@@ -40,17 +56,17 @@ export async function uploadImageToS3(
 
     // Upload to S3
     const command = new PutObjectCommand({
-      Bucket: BUCKET_NAME,
+      Bucket: bucketName,
       Key: key,
       Body: buffer,
       ContentType: contentType,
       ACL: 'public-read', // Make image publicly accessible
     });
 
-    await s3Client.send(command);
+    await client.send(command);
 
     // Return public URL
-    const url = `https://${BUCKET_NAME}.s3.${BUCKET_REGION}.amazonaws.com/${key}`;
+    const url = `https://${bucketName}.s3.${bucketRegion}.amazonaws.com/${key}`;
     console.log(`   ✅ Image uploaded to S3: ${url}`);
     return url;
   } catch (error) {
