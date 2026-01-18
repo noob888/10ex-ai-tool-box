@@ -41,9 +41,17 @@ Search Query: "${query}"
 
 IMPORTANT: Only return articles published on or after ${dateStr} (${currentDate}). Focus on breaking news and latest developments from the last 48 hours.
 
+CRITICAL URL REQUIREMENTS:
+- URLs MUST be real, accessible article URLs from reputable news sources
+- URLs MUST start with https:// or http://
+- URLs MUST be complete (not truncated or partial)
+- DO NOT use placeholder URLs like example.com, test.com, or localhost
+- DO NOT use search result URLs (google.com/search, etc.)
+- URLs should be from actual news publications (TechCrunch, The Verge, Wired, etc.)
+
 Please find and return information about the latest AI news articles. For each article, provide:
 1. Title
-2. URL (actual article URL - must be a real, accessible URL)
+2. URL (REAL article URL from actual news source - must be accessible and complete)
 3. Brief description/snippet (2-3 sentences)
 4. Source/publication name
 5. Published date (format: YYYY-MM-DD, must be ${dateStr} or very recent)
@@ -52,7 +60,7 @@ Format your response as a JSON array with this structure:
 [
   {
     "title": "Article Title",
-    "url": "https://example.com/article",
+    "url": "https://real-news-site.com/actual-article-path",
     "snippet": "Brief description of the article...",
     "source": "Publication Name",
     "publishedDate": "${dateStr}"
@@ -111,12 +119,19 @@ function extractNewsFromText(text: string): NewsSearchResult[] {
     // Look for URLs
     const urlMatch = line.match(/https?:\/\/[^\s\)]+/);
     if (urlMatch) {
-      const url = urlMatch[0];
+      const rawUrl = urlMatch[0];
+      
+      // Validate and clean URL
+      const url = validateAndCleanUrl(rawUrl);
+      if (!url) {
+        continue; // Skip invalid URLs
+      }
+      
       const title = lines[i - 1] || line.substring(0, 100);
       const source = extractSourceFromUrl(url);
       
       results.push({
-        title: title.replace(url, '').trim() || 'AI News Article',
+        title: title.replace(rawUrl, '').trim() || 'AI News Article',
         url: url,
         snippet: lines[i + 1] || 'Latest AI news article',
         source: source,
@@ -128,11 +143,125 @@ function extractNewsFromText(text: string): NewsSearchResult[] {
 }
 
 /**
+ * Check if URL is accessible (doesn't return 404)
+ * Uses HEAD request with timeout to avoid blocking
+ */
+async function checkUrlAccessible(url: string, timeoutMs: number = 5000): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const response = await fetch(url, {
+      method: 'HEAD', // HEAD is faster than GET
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AI-News-Bot/1.0)',
+      },
+      redirect: 'follow', // Follow redirects
+    });
+
+    clearTimeout(timeoutId);
+
+    // Consider 2xx and 3xx as accessible (not 404)
+    // 404 = not found, 403 = forbidden (might be real but blocked), 5xx = server error
+    const isAccessible = response.status >= 200 && response.status < 400;
+    
+    if (!isAccessible) {
+      console.log(`   ⚠ URL returned ${response.status}: ${url.substring(0, 60)}...`);
+    }
+    
+    return isAccessible;
+  } catch (error: any) {
+    // Timeout, network error, or other fetch error
+    if (error.name === 'AbortError') {
+      console.log(`   ⚠ URL check timeout: ${url.substring(0, 60)}...`);
+    } else {
+      console.log(`   ⚠ URL check failed: ${url.substring(0, 60)}... (${error.message || 'Unknown error'})`);
+    }
+    // On error, we'll still accept the URL (fail open) to avoid blocking valid URLs
+    // that might have temporary network issues
+    return true; // Fail open - assume accessible if we can't check
+  }
+}
+
+/**
+ * Validate and clean URL
+ */
+function validateAndCleanUrl(url: string): string | null {
+  if (!url || typeof url !== 'string') {
+    return null;
+  }
+
+  // Remove whitespace
+  url = url.trim();
+
+  // Remove trailing punctuation that might have been included
+  url = url.replace(/[.,;:!?]+$/, '');
+
+  // Remove parentheses and brackets from end
+  url = url.replace(/[)\]}]$/, '');
+
+  // Skip if URL is too short or looks invalid
+  if (url.length < 10 || !url.includes('.')) {
+    return null;
+  }
+
+  // Add protocol if missing
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+
+  try {
+    const urlObj = new URL(url);
+    
+    // Validate URL structure
+    if (!urlObj.hostname || urlObj.hostname.length < 3) {
+      return null;
+    }
+
+    // Reject common placeholder/fake URLs and search result pages
+    const fakePatterns = [
+      'example.com',
+      'placeholder.com',
+      'test.com',
+      'localhost',
+      '127.0.0.1',
+    ];
+    
+    const hostname = urlObj.hostname.toLowerCase();
+    if (fakePatterns.some(pattern => hostname.includes(pattern))) {
+      return null;
+    }
+
+    // Reject search result pages and non-article URLs
+    const pathname = urlObj.pathname.toLowerCase();
+    const searchParams = urlObj.search.toLowerCase();
+    if (
+      pathname.includes('/search') ||
+      pathname.includes('/results') ||
+      searchParams.includes('q=') ||
+      searchParams.includes('query=') ||
+      pathname.includes('/watch') ||
+      pathname.includes('/channel')
+    ) {
+      return null;
+    }
+
+    // Return cleaned URL
+    return urlObj.toString();
+  } catch (error) {
+    // Invalid URL format
+    return null;
+  }
+}
+
+/**
  * Extract source name from URL
  */
 function extractSourceFromUrl(url: string): string {
   try {
-    const domain = new URL(url).hostname;
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
     // Remove www. and common TLDs, get main domain
     const source = domain.replace(/^www\./, '').split('.')[0];
     return source.charAt(0).toUpperCase() + source.slice(1);
@@ -244,8 +373,26 @@ export async function fetchAINewsWithAgent(): Promise<{ fetched: number; saved: 
           try {
             // Skip if no title or URL
             if (!result.title || !result.url) {
+              console.log(`   ⊘ Skipping: Missing title or URL`);
               continue;
             }
+
+            // Validate and clean URL
+            const cleanedUrl = validateAndCleanUrl(result.url);
+            if (!cleanedUrl) {
+              console.log(`   ⊘ Skipping invalid URL: ${result.url.substring(0, 60)}...`);
+              continue;
+            }
+
+            // Check if URL is accessible (doesn't return 404)
+            const isAccessible = await checkUrlAccessible(cleanedUrl, 5000); // 5 second timeout
+            if (!isAccessible) {
+              console.log(`   ⊘ Skipping inaccessible URL (404 or error): ${cleanedUrl.substring(0, 60)}...`);
+              continue;
+            }
+
+            // Use cleaned URL
+            result.url = cleanedUrl;
 
             // Check if article already exists (with retry)
             let existing = null;

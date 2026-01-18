@@ -9,9 +9,11 @@
     "lint": "next lint",
     "db:migrate": "tsx database/scripts/migrate.ts",
     "db:seed": "tsx database/scripts/seed.ts",
-    "db:drop-old": "tsx database/scripts/drop_old_tables.ts"
+    "db:drop-old": "tsx database/scripts/drop_old_tables.ts",
+    "db:cleanup-broken-urls": "tsx database/scripts/cleanup-broken-urls.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@google/genai": "1.34.0",
     "date-fns": "^3.6.0",
     "dotenv": "^17.2.3",

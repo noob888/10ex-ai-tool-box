@@ -291,6 +291,48 @@ export class NewsRepository {
   }
 
   /**
+   * Delete a news article by ID
+   */
+  async deleteById(id: string): Promise<boolean> {
+    try {
+      const pool = getDatabasePool();
+      const result = await pool.query(
+        'DELETE FROM toolbox_news WHERE id = $1',
+        [id]
+      );
+      return (result.rowCount || 0) > 0;
+    } catch (error: any) {
+      if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
+        console.warn('News table does not exist yet. Run migration: npm run db:migrate');
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Delete multiple news articles by IDs
+   */
+  async deleteByIds(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    
+    try {
+      const pool = getDatabasePool();
+      const result = await pool.query(
+        'DELETE FROM toolbox_news WHERE id = ANY($1)',
+        [ids]
+      );
+      return result.rowCount || 0;
+    } catch (error: any) {
+      if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
+        console.warn('News table does not exist yet. Run migration: npm run db:migrate');
+        return 0;
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Map database row to NewsArticle
    */
   private mapToNews(row: any): NewsArticle {

@@ -1,6 +1,8 @@
 import { MetadataRoute } from 'next';
 import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { PromptsRepository } from '@/database/repositories/prompts.repository';
+import { SEOPagesRepository } from '@/database/repositories/seoPages.repository';
+import { getDatabasePool } from '@/database/connection';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
@@ -62,6 +64,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     });
   });
+
+  // Add dynamically generated SEO pages if database is available
+  try {
+    if (process.env.DATABASE_URL) {
+      const pool = getDatabasePool();
+      // Test connection with a timeout
+      const client = await Promise.race([
+        pool.connect(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Database connection timeout')), 5000))
+      ]) as any;
+      
+      if (client && typeof client.release === 'function') {
+        try {
+          const seoPagesRepo = new SEOPagesRepository();
+          const seoPages = await Promise.race([
+            seoPagesRepo.findAll({ published: true, limit: 100 }),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Database query timeout')), 10000))
+          ]) as any[];
+          
+          seoPages.forEach(page => {
+            routes.push({
+              url: `${baseUrl}/seo/${page.slug}`,
+              lastModified: new Date(page.updatedAt || page.createdAt),
+              changeFrequency: 'weekly',
+              priority: 0.8,
+            });
+          });
+        } finally {
+          if (client && typeof client.release === 'function') {
+            client.release();
+          }
+        }
+      }
+    }
+  } catch (error: any) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error generating SEO pages sitemap entries:', error);
+    } else {
+      console.warn('Sitemap: SEO pages database access failed during build, skipping dynamic SEO pages.');
+    }
+  }
 
   // Add individual tool pages if database is available
   // Skip during build if database is not accessible (sitemap will be generated dynamically at runtime)

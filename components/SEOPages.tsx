@@ -9,14 +9,161 @@ interface Props {
   keyword: string;
   targetTool?: Tool;
   alternatives: Tool[];
-  onBack: () => void;
-  onToolClick: (tool: Tool) => void;
-  onVote: (tool: Tool) => void;
+  onBack?: () => void;
+  onToolClick?: (tool: Tool) => void;
+  onVote?: (tool: Tool) => void;
   onLike?: (tool: Tool) => void;
   onStar?: (tool: Tool) => void;
+  featuredImageUrl?: string | null;
+  introduction?: string | null;
+  sections?: Array<{
+    heading: string;
+    content: string;
+    type: string;
+  }>;
 }
 
-export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, onBack, onToolClick, onVote, onLike, onStar }) => {
+/**
+ * Format content with proper styling for asterisks, bullet points, etc.
+ */
+function formatContent(content: string): React.ReactNode {
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  
+  let currentParagraph: string[] = [];
+  let listItems: string[] = [];
+  let listKey = 0;
+  
+  const flushParagraph = (key: string) => {
+    if (currentParagraph.length > 0) {
+      elements.push(
+        <p key={key} className="mb-5 leading-7 text-[#888]">
+          {formatInlineText(currentParagraph.join(' '))}
+        </p>
+      );
+      currentParagraph = [];
+    }
+  };
+  
+  const flushList = (key: string) => {
+    if (listItems.length > 0) {
+      elements.push(
+        <ul key={key} className="list-none space-y-3 mb-6 ml-2">
+          {listItems.map((item, itemIdx) => (
+            <li key={`${key}-${itemIdx}`} className="flex items-start gap-3">
+              <span className="text-electric-blue mt-2 font-bold text-lg">•</span>
+              <span className="flex-1 leading-7 text-[#888]">{formatInlineText(item)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      listItems = [];
+      listKey++;
+    }
+  };
+  
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    
+    // Handle bullet points (lines starting with * or -)
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+      // Close previous paragraph if exists
+      flushParagraph(`para-${idx}`);
+      
+      // Add to list
+      const listItemText = trimmed.substring(2); // Remove "* " or "- "
+      listItems.push(listItemText);
+    } else if (trimmed === '') {
+      // Empty line - flush both paragraph and list
+      flushList(`list-${listKey}`);
+      flushParagraph(`para-${idx}`);
+    } else {
+      // Regular paragraph text
+      // Flush list first if it exists
+      flushList(`list-${listKey}`);
+      currentParagraph.push(trimmed);
+    }
+  });
+  
+  // Flush any remaining content
+  flushList(`list-final-${listKey}`);
+  flushParagraph('para-final');
+  
+  return <>{elements}</>;
+}
+
+/**
+ * Format inline text with asterisks for emphasis
+ */
+function formatInlineText(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  
+  // Match text between single asterisks (*text*)
+  // But exclude patterns like "*Label:*" at the start of a line or after punctuation
+  const asteriskRegex = /\*([^*]+?)\*/g;
+  let match;
+  
+  while ((match = asteriskRegex.exec(text)) !== null) {
+    const beforeChar = match.index > 0 ? text[match.index - 1] : ' ';
+    const afterChar = match.index + match[0].length < text.length 
+      ? text[match.index + match[0].length] 
+      : ' ';
+    
+    // Check if it's a label pattern like "*Pricing:*" (ends with colon)
+    const isLabel = match[1].endsWith(':');
+    
+    // Add text before the match
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    
+    if (isLabel) {
+      // For labels, remove the colon from emphasis and add it after
+      const labelText = match[1].slice(0, -1); // Remove trailing colon
+      parts.push(
+        <span key={`emph-${match.index}`} className="text-white font-semibold">
+          {labelText}
+        </span>
+      );
+      parts.push(':');
+    } else {
+      // Regular emphasis
+      parts.push(
+        <span key={`emph-${match.index}`} className="text-white font-semibold">
+          {match[1]}
+        </span>
+      );
+    }
+    
+    lastIndex = match.index + match[0].length;
+  }
+  
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  
+  return parts.length > 0 ? <>{parts}</> : text;
+}
+
+export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, onBack, onToolClick, onVote, onLike, onStar, featuredImageUrl, introduction, sections }) => {
+  // Default handlers if not provided (for server-side rendering)
+  const handleBack = onBack || (() => {
+    if (typeof window !== 'undefined') {
+      window.history.back();
+    }
+  });
+  
+  const handleToolClick = onToolClick || ((tool: Tool) => {
+    if (typeof window !== 'undefined') {
+      window.location.href = `/tool/${tool.id}`;
+    }
+  });
+  
+  const handleVote = onVote || (() => {
+    // No-op for server-side
+  });
   const [displayedCount, setDisplayedCount] = useState(24);
 
   const displayedTools = useMemo(() => {
@@ -31,17 +178,38 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
 
   return (
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-500 pt-8">
-      <button onClick={onBack} className="flex items-center gap-2 text-[#666] hover:text-white transition-colors text-xs font-bold uppercase tracking-widest">
+      <button onClick={handleBack} className="flex items-center gap-2 text-[#666] hover:text-white transition-colors text-xs font-bold uppercase tracking-widest">
         <ArrowLeft size={14} /> Back to Directory
       </button>
+
+      {/* Featured Image */}
+      {featuredImageUrl && (
+        <div className="relative w-full h-64 md:h-96 rounded-lg overflow-hidden border border-[#1f1f1f]">
+          <img
+            src={featuredImageUrl}
+            alt={keyword}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
           Best <span className="text-white">{keyword}</span> for 2026
         </h1>
+        {/* Use generated introduction if available, otherwise use default */}
+        {introduction ? (
+          <div className="text-[#888] text-base leading-relaxed max-w-3xl space-y-5">
+            {formatContent(introduction)}
+          </div>
+        ) : (
         <p className="text-[#888] text-base leading-relaxed max-w-3xl">
           Don't settle for marketing hype. We audited 600+ AI tools to bring you the top performing {keyword.toLowerCase()} based on latency, output quality, and cost-efficiency.
         </p>
+        )}
         <div className="flex items-center gap-4 text-[10px] font-bold text-[#444] uppercase tracking-widest">
           <span>{alternatives.length} Tools Found</span>
           <span className="text-[#222]">•</span>
@@ -49,13 +217,29 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
         </div>
       </div>
 
+      {/* Generated Content Sections */}
+      {sections && sections.length > 0 && (
+        <div className="space-y-10">
+          {sections.map((section, idx) => (
+            <div key={idx} className="space-y-6">
+              <h2 className="text-2xl md:text-3xl font-black text-white border-b border-[#1f1f1f] pb-3">
+                {section.heading}
+              </h2>
+              <div className="text-[#888] text-base leading-relaxed space-y-5 prose prose-invert max-w-none">
+                {formatContent(section.content)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {displayedTools.map(tool => (
           <ToolCard 
             key={tool.id} 
             tool={tool} 
-            onClick={onToolClick} 
-            onVote={onVote}
+            onClick={handleToolClick} 
+            onVote={handleVote}
             onLike={onLike || (() => {})} 
             onStar={onStar || (() => {})} 
             isLiked={false}

@@ -1,16 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
+      reactStrictMode: true,
   env: {
     DATABASE_URL: process.env.DATABASE_URL,
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai',
   },
-  // Enable server-side rendering
-  experimental: {
-    serverActions: true,
-  },
+      // Server Actions are enabled by default in Next.js 15
   // SEO optimizations
   compress: true,
   poweredByHeader: false,

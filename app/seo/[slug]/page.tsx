@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { SEOSection } from '@/components/SEOPages';
 import { ToolsRepository } from '@/database/repositories/tools.repository';
+import { SEOPagesRepository } from '@/database/repositories/seoPages.repository';
 import { Category } from '@/types';
 
 type Props = {
@@ -66,32 +67,61 @@ function getFilteredToolsForSEO(keyword: string, allTools: any[]): any[] {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
   
+  // Check if this is a dynamically generated SEO page
+  const seoPagesRepo = new SEOPagesRepository();
+  const seoPage = await seoPagesRepo.findBySlug(slug);
+  
+  let keyword: string;
+  let title: string;
+  let description: string;
+  let featuredImage: string | null = null;
+  
+  if (seoPage && seoPage.isPublished) {
+    keyword = seoPage.keyword;
+    title = seoPage.title;
+    description = seoPage.metaDescription || `Discover the best ${seoPage.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews and recommendations.`;
+    featuredImage = seoPage.featuredImageUrl;
+  } else {
+    keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
+    title = `Best ${keyword} for 2026`;
+    description = `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`;
+  }
+  
   return {
-    title: `Best ${keyword} for 2026`,
-    description: `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`,
+    title,
+    description,
     keywords: [
       keyword,
       'AI tools',
       'best AI tools 2026',
       'AI tool comparison',
       'AI tool reviews',
+      ...(seoPage?.targetKeywords || []),
     ],
     openGraph: {
-      title: `Best ${keyword} for 2026`,
-      description: `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options.`,
+      title,
+      description,
       type: 'website',
       url: `${baseUrl}/seo/${slug}`,
+      images: featuredImage ? [
+        {
+          url: featuredImage,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ] : undefined,
     },
     twitter: {
       card: 'summary_large_image',
-      title: `Best ${keyword} for 2026`,
-      description: `Discover the best ${keyword.toLowerCase()} in 2026.`,
+      title,
+      description,
+      images: featuredImage ? [featuredImage] : undefined,
     },
     alternates: {
-      canonical: `${baseUrl}/seo/${slug}`,
+      canonical: seoPage?.canonicalUrl || `${baseUrl}/seo/${slug}`,
     },
   };
 }
@@ -100,18 +130,53 @@ export default async function SEOPage({ params }: Props) {
   const { slug } = await params;
   
   // Validate slug - return 404 for invalid slugs
-  if (!slugToKeyword[slug] && !slug.match(/^[a-z0-9-]+$/)) {
+  if (!slug.match(/^[a-z0-9-]+$/)) {
     notFound();
   }
   
-  const keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
-  const toolsRepo = new ToolsRepository();
-  const allTools = await toolsRepo.findAll();
-  const filteredTools = getFilteredToolsForSEO(keyword, allTools);
+  // First, check if this is a dynamically generated SEO page
+  const seoPagesRepo = new SEOPagesRepository();
+  const seoPage = await seoPagesRepo.findBySlug(slug);
   
-  // Return 404 if no tools found for this slug
-  if (filteredTools.length === 0 && !slugToKeyword[slug]) {
-    notFound();
+  let keyword: string;
+  let filteredTools: any[];
+  
+  if (seoPage && seoPage.isPublished) {
+    // Use dynamically generated page
+    keyword = seoPage.keyword;
+    const toolsRepo = new ToolsRepository();
+    const allTools = await toolsRepo.findAll();
+    // Get tools by IDs from SEO page
+    filteredTools = allTools.filter(t => seoPage.relatedToolIds.includes(t.id));
+    // If no tools found by ID, fall back to keyword matching
+    if (filteredTools.length === 0) {
+      filteredTools = getFilteredToolsForSEO(keyword, allTools);
+    }
+  } else {
+    // Fall back to static keyword mapping
+    if (!slugToKeyword[slug]) {
+      // If not in static mapping, try to generate keyword from slug
+      // This allows dynamically generated pages to work even if DB lookup fails
+      keyword = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      const toolsRepo = new ToolsRepository();
+      const allTools = await toolsRepo.findAll();
+      filteredTools = getFilteredToolsForSEO(keyword, allTools);
+      
+      // Return 404 only if no tools found
+      if (filteredTools.length === 0) {
+        notFound();
+      }
+    } else {
+      keyword = slugToKeyword[slug];
+      const toolsRepo = new ToolsRepository();
+      const allTools = await toolsRepo.findAll();
+      filteredTools = getFilteredToolsForSEO(keyword, allTools);
+      
+      // Return 404 if no tools found for this slug
+      if (filteredTools.length === 0) {
+        notFound();
+      }
+    }
   }
 
   // Generate structured data
@@ -148,9 +213,9 @@ export default async function SEOPage({ params }: Props) {
         <SEOSection
           keyword={keyword}
           alternatives={filteredTools}
-          onBack={() => {}}
-          onToolClick={(tool) => {}}
-          onVote={() => {}}
+          featuredImageUrl={seoPage?.featuredImageUrl || null}
+          introduction={seoPage?.introduction || null}
+          sections={seoPage?.sections || undefined}
         />
       </div>
     </>

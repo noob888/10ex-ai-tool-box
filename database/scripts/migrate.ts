@@ -24,6 +24,12 @@ async function runMigrations() {
     await pool.query(newsMigrationSQL);
     console.log('✓ News table migration completed');
 
+    // Run SEO pages table migration
+    const seoPagesPath = join(process.cwd(), 'database/migrations/003_add_seo_pages_table.sql');
+    const seoPagesSQL = readFileSync(seoPagesPath, 'utf-8');
+    await pool.query(seoPagesSQL);
+    console.log('✓ SEO pages table migration completed');
+
     console.log('All migrations completed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);
