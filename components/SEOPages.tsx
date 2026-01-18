@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Tool } from '../types';
 import { ToolCard } from './ToolCard';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   keyword: string;
   targetTool?: Tool;
-  alternatives: Tool[];
+  alternatives?: Tool[]; // Made optional - will fetch client-side
+  relatedToolIds?: string[]; // Pass IDs instead of full objects
+  category?: string; // For category-based queries
   onBack?: () => void;
   onToolClick?: (tool: Tool) => void;
   onVote?: (tool: Tool) => void;
@@ -147,30 +150,72 @@ function formatInlineText(text: string): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : text;
 }
 
-export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, onBack, onToolClick, onVote, onLike, onStar, featuredImageUrl, introduction, sections }) => {
-  // Default handlers if not provided (for server-side rendering)
-  const handleBack = onBack || (() => {
-    if (typeof window !== 'undefined') {
-      window.history.back();
+export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, relatedToolIds, category, onBack, onToolClick, onVote, onLike, onStar, featuredImageUrl, introduction, sections }) => {
+  const router = useRouter();
+  const [tools, setTools] = useState<Tool[]>(alternatives || []);
+  const [loading, setLoading] = useState(!alternatives || alternatives.length === 0);
+  const [displayedCount, setDisplayedCount] = useState(10); // Start with 10
+
+  // Fetch tools client-side if not provided
+  useEffect(() => {
+    if (alternatives && alternatives.length > 0) {
+      // Tools already provided (fallback)
+      setTools(alternatives);
+      setLoading(false);
+      return;
     }
-  });
+
+    // Fetch tools client-side
+    const fetchTools = async () => {
+      try {
+        setLoading(true);
+        let url = '/api/tools?limit=10';
+        
+        if (relatedToolIds && relatedToolIds.length > 0) {
+          // Fetch specific tools by IDs
+          const toolsPromises = relatedToolIds.slice(0, 10).map(id => 
+            fetch(`/api/tools/${id}`).then(res => res.json()).then(data => data.tool).catch(() => null)
+          );
+          const fetchedTools = (await Promise.all(toolsPromises)).filter(Boolean);
+          setTools(fetchedTools);
+        } else if (category) {
+          // Fetch by category
+          url += `&category=${category}`;
+          const response = await fetch(url);
+          const data = await response.json();
+          setTools(data.tools || []);
+        } else {
+          // Search by keyword
+          url += `&search=${encodeURIComponent(keyword)}`;
+          const response = await fetch(url);
+          const data = await response.json();
+          setTools(data.tools || []);
+        }
+      } catch (error) {
+        console.error('Error fetching tools:', error);
+        setTools([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTools();
+  }, [alternatives, relatedToolIds, category, keyword]);
+
+  // Default handlers
+  const handleBack = onBack || (() => router.back());
   
   const handleToolClick = onToolClick || ((tool: Tool) => {
-    if (typeof window !== 'undefined') {
-      window.location.href = `/tool/${tool.id}`;
-    }
+    router.push(`/tool/${tool.id}`);
   });
   
-  const handleVote = onVote || (() => {
-    // No-op for server-side
-  });
-  const [displayedCount, setDisplayedCount] = useState(24);
+  const handleVote = onVote || (() => {});
 
   const displayedTools = useMemo(() => {
-    return alternatives.slice(0, displayedCount);
-  }, [alternatives, displayedCount]);
+    return tools.slice(0, displayedCount);
+  }, [tools, displayedCount]);
 
-  const hasMoreTools = displayedCount < alternatives.length;
+  const hasMoreTools = displayedCount < tools.length;
 
   const handleLoadMore = () => {
     setDisplayedCount(prev => prev + 24);
@@ -210,11 +255,11 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
           Don't settle for marketing hype. We audited 600+ AI tools to bring you the top performing {keyword.toLowerCase()} based on latency, output quality, and cost-efficiency.
         </p>
         )}
-        <div className="flex items-center gap-4 text-[10px] font-bold text-[#444] uppercase tracking-widest">
-          <span>{alternatives.length} Tools Found</span>
-          <span className="text-[#222]">•</span>
-          <span>Sorted by Rating</span>
-        </div>
+            <div className="flex items-center gap-4 text-[10px] font-bold text-[#444] uppercase tracking-widest">
+              <span>{loading ? '...' : tools.length} Tools Found</span>
+              <span className="text-[#222]">•</span>
+              <span>Sorted by Rating</span>
+            </div>
       </div>
 
       {/* Generated Content Sections */}
@@ -233,20 +278,31 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {displayedTools.map(tool => (
-          <ToolCard 
-            key={tool.id} 
-            tool={tool} 
-            onClick={handleToolClick} 
-            onVote={handleVote}
-            onLike={onLike || (() => {})} 
-            onStar={onStar || (() => {})} 
-            isLiked={false}
-            isStarred={false}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="text-center py-16">
+          <Loader2 className="animate-spin text-electric-blue mx-auto mb-4" size={32} />
+          <p className="text-[#666] text-sm">Loading tools...</p>
+        </div>
+      ) : tools.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {displayedTools.map(tool => (
+            <ToolCard 
+              key={tool.id} 
+              tool={tool} 
+              onClick={handleToolClick} 
+              onVote={handleVote}
+              onLike={onLike || (() => {})} 
+              onStar={onStar || (() => {})} 
+              isLiked={false}
+              isStarred={false}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-16">
+          <p className="text-[#666] text-sm">No tools found.</p>
+        </div>
+      )}
 
       {hasMoreTools && (
         <div className="flex justify-center">
@@ -260,37 +316,37 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
         </div>
       )}
 
-      {alternatives.length > 0 && (
-        <div className="p-8 rounded-lg border border-[#1f1f1f] bg-[#050505] space-y-6">
-          <h2 className="text-xl font-bold">Why choose the right {keyword.toLowerCase()}?</h2>
-          <p className="text-sm text-[#666] leading-relaxed">
-            Finding the perfect {keyword.toLowerCase()} can make or break your workflow. We've analyzed 600+ tools to help you find the best match based on performance, pricing, and features. Our curated list ensures you get tools that actually deliver results.
-          </p>
-          {alternatives.length >= 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
-                <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Top Rated</h3>
-                <p className="text-xs font-bold text-white">{alternatives[0]?.name || "N/A"}</p>
-                <p className="text-[10px] text-[#666] mt-1">{alternatives[0]?.rating}% Rating</p>
-              </div>
-              <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
-                <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Best Value</h3>
-                <p className="text-xs font-bold text-white">{alternatives[1]?.name || "N/A"}</p>
-                <p className="text-[10px] text-[#666] mt-1">{alternatives[1]?.pricing} Pricing</p>
-              </div>
-              {alternatives[2] && (
-                <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
-                  <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Most Popular</h3>
-                  <p className="text-xs font-bold text-white">{alternatives[2]?.name || "N/A"}</p>
-                  <p className="text-[10px] text-[#666] mt-1">{alternatives[2]?.votes} Votes</p>
+          {!loading && tools.length > 0 && (
+            <div className="p-8 rounded-lg border border-[#1f1f1f] bg-[#050505] space-y-6">
+              <h2 className="text-xl font-bold">Why choose the right {keyword.toLowerCase()}?</h2>
+              <p className="text-sm text-[#666] leading-relaxed">
+                Finding the perfect {keyword.toLowerCase()} can make or break your workflow. We've analyzed 600+ tools to help you find the best match based on performance, pricing, and features. Our curated list ensures you get tools that actually deliver results.
+              </p>
+              {tools.length >= 2 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
+                    <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Top Rated</h3>
+                    <p className="text-xs font-bold text-white">{tools[0]?.name || "N/A"}</p>
+                    <p className="text-[10px] text-[#666] mt-1">{tools[0]?.rating}% Rating</p>
+                  </div>
+                  <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
+                    <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Best Value</h3>
+                    <p className="text-xs font-bold text-white">{tools[1]?.name || "N/A"}</p>
+                    <p className="text-[10px] text-[#666] mt-1">{tools[1]?.pricing} Pricing</p>
+                  </div>
+                  {tools[2] && (
+                    <div className="p-4 rounded bg-[#0a0a0a] border border-[#1f1f1f]">
+                      <h3 className="text-[10px] font-black uppercase text-[#444] mb-2 tracking-widest">Most Popular</h3>
+                      <p className="text-xs font-bold text-white">{tools[2]?.name || "N/A"}</p>
+                      <p className="text-[10px] text-[#666] mt-1">{tools[2]?.votes} Votes</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
-        </div>
-      )}
 
-      {alternatives.length === 0 && (
+          {!loading && tools.length === 0 && (
         <div className="p-12 rounded-lg border border-[#1f1f1f] bg-[#050505] text-center">
           <p className="text-[#666] text-sm">No tools found matching "{keyword}". Try browsing our categories or use the search function.</p>
         </div>
