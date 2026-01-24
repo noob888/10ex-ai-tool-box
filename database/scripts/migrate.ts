@@ -30,6 +30,24 @@ async function runMigrations() {
     await pool.query(seoPagesSQL);
     console.log('✓ SEO pages table migration completed');
 
+    // Run tool discovery fields migration
+    const toolDiscoveryPath = join(process.cwd(), 'database/migrations/004_add_tool_discovery_fields.sql');
+    const toolDiscoverySQL = readFileSync(toolDiscoveryPath, 'utf-8');
+    await pool.query(toolDiscoverySQL);
+    console.log('✓ Tool discovery fields migration completed');
+
+    // Run topic clustering fields migration
+    const topicClusteringPath = join(process.cwd(), 'database/migrations/005_add_topic_clustering_fields.sql');
+    const topicClusteringSQL = readFileSync(topicClusteringPath, 'utf-8');
+    await pool.query(topicClusteringSQL);
+    console.log('✓ Topic clustering fields migration completed');
+
+    // Run tool enrichment fields migration
+    const toolEnrichmentPath = join(process.cwd(), 'database/migrations/006_add_tool_faqs_and_usecases.sql');
+    const toolEnrichmentSQL = readFileSync(toolEnrichmentPath, 'utf-8');
+    await pool.query(toolEnrichmentSQL);
+    console.log('✓ Tool enrichment fields migration completed');
+
     console.log('All migrations completed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);

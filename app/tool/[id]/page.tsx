@@ -66,7 +66,16 @@ export default async function ToolPage({ params }: Props) {
     notFound();
   }
 
-  // Generate structured data
+  // Get FAQ and use cases from database (already generated and cached)
+  const [enrichment, relatedTools] = await Promise.all([
+    toolsRepo.getEnrichment(tool.id).catch(() => ({ faqs: [], useCases: [] })),
+    toolsRepo.findTopRatedByCategory(tool.category, 9).catch(() => []),
+  ]);
+
+  const faqs = enrichment.faqs || [];
+  const useCases = enrichment.useCases || [];
+
+  // Generate structured data with FAQ and use cases
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -86,8 +95,78 @@ export default async function ToolPage({ params }: Props) {
       "bestRating": 5,
       "worstRating": 1,
     },
+    "review": [
+      {
+        "@type": "Review",
+        "author": {
+          "@type": "Organization",
+          "name": "AI Tool Box"
+        },
+        "datePublished": tool.launchDate || new Date().toISOString().split('T')[0],
+        "reviewBody": `${tool.description} Best for: ${tool.bestFor}. Strengths: ${tool.strengths.join(', ')}.`,
+        "reviewRating": {
+          "@type": "Rating",
+          "ratingValue": Math.max(1, Math.min(5, (tool.rating / 100) * 5)),
+          "bestRating": 5,
+          "worstRating": 1
+        }
+      }
+    ],
     "url": tool.websiteUrl,
+    ...(faqs.length > 0 && {
+      "mainEntity": {
+        "@type": "FAQPage",
+        "mainEntity": faqs.map(faq => ({
+          "@type": "Question",
+          "name": faq.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": faq.answer,
+          },
+        })),
+      },
+    }),
   };
+
+  // Add breadcrumb structured data
+  const breadcrumbData = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": process.env.NEXT_PUBLIC_SITE_URL || "https://tools.10ex.ai",
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": tool.category,
+        "item": `${process.env.NEXT_PUBLIC_SITE_URL || "https://tools.10ex.ai"}/best-ai-for/${tool.category.toLowerCase()}`,
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": tool.name,
+        "item": `${process.env.NEXT_PUBLIC_SITE_URL || "https://tools.10ex.ai"}/tool/${tool.id}`,
+      },
+    ],
+  };
+
+  // Add HowTo structured data for use cases
+  const howToData = useCases.length > 0 ? {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": `How to use ${tool.name}`,
+    "description": `Use cases and guides for ${tool.name}`,
+    "step": useCases.map((useCase, index) => ({
+      "@type": "HowToStep",
+      "position": index + 1,
+      "name": useCase.title,
+      "text": useCase.description,
+    })),
+  } : null;
 
   return (
     <>
@@ -97,7 +176,26 @@ export default async function ToolPage({ params }: Props) {
           __html: JSON.stringify(structuredData),
         }}
       />
-      <ToolDetailPage tool={tool} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbData),
+        }}
+      />
+      {howToData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(howToData),
+          }}
+        />
+      )}
+      <ToolDetailPage 
+        tool={tool} 
+        faqs={faqs}
+        useCases={useCases}
+        relatedTools={relatedTools}
+      />
     </>
   );
 }

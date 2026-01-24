@@ -3,6 +3,59 @@ import { GoogleGenAI } from "@google/genai";
 import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { SEOPagesRepository } from '@/database/repositories/seoPages.repository';
 import { Category } from '@/types';
+import { uploadImageToS3, generateImageFilename } from './s3Service';
+
+/**
+ * Sleep/delay utility
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry with exponential backoff for rate limit errors
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a rate limit error (429)
+      if (error?.status === 429 || error?.message?.includes('quota') || error?.message?.includes('429')) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        // Try to extract retry delay from error details (Gemini API provides this in error.details)
+        let retryAfter = delay;
+        if (error?.retryDelay) {
+          retryAfter = error.retryDelay;
+        } else if (error?.details && Array.isArray(error.details)) {
+          const retryInfo = error.details.find((d: any) => d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo');
+          if (retryInfo?.retryDelay) {
+            // Convert seconds to milliseconds if needed
+            retryAfter = typeof retryInfo.retryDelay === 'number' 
+              ? retryInfo.retryDelay * 1000 
+              : retryInfo.retryDelay;
+          }
+        }
+        console.log(`   ⏳ Rate limit hit, waiting ${retryAfter}ms before retry (attempt ${attempt + 1}/${maxRetries})...`);
+        await sleep(retryAfter);
+        continue;
+      }
+      
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
 
 interface SEOResearchResult {
   keyword: string;
@@ -18,6 +71,11 @@ interface SEOResearchResult {
     type: 'introduction' | 'comparison' | 'features' | 'pricing' | 'conclusion';
   }>;
   relatedToolIds: string[];
+  // Topic clustering fields
+  topicCluster?: string;
+  pillarTopicId?: string;
+  clusterRank?: number;
+  isPillar?: boolean;
 }
 
 interface SEOPageContent {
@@ -88,10 +146,12 @@ Respond with JSON:
 
 Return ONLY valid JSON, no additional text.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: prompt,
-    });
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents: prompt,
+      });
+    }, 3, 8000);
 
     const text = response.text || '';
     const jsonMatch = text.match(/\{[\s\S]*\}/) || text.match(/```json\s*([\s\S]*?)\s*```/);
@@ -294,46 +354,79 @@ async function researchSEOKeywords(): Promise<SEOResearchResult[]> {
       day: 'numeric' 
     });
 
-    // Use Gemini to research SEO opportunities
+    // Use Gemini to research SEO opportunities with topic clustering
     const prompt = `You are an SEO research expert specializing in AI tools and software directories.
 
 Today's Date: ${currentDate}
 
-Your task is to identify 3-5 high-value SEO keyword opportunities for an AI tools directory website (tools.10ex.ai). 
+Your task is to identify 20-25 high-value SEO keyword opportunities for an AI tools directory website (tools.10ex.ai). 
+Organize these keywords into 4-5 topic clusters using a pillar/cluster structure.
 
 IMPORTANT REQUIREMENTS:
-1. Keywords must be SEMANTICALLY UNIQUE - avoid variations of the same topic
-2. Each keyword should target a DISTINCT search intent
-3. Keywords with good search volume (1000+ monthly searches)
-4. Low to medium competition
-5. High commercial intent
-6. Relevance to AI tools, software, and productivity
-7. Avoid duplicate or near-duplicate keywords (e.g., don't suggest both "best AI tools" and "top AI tools")
+1. Generate 20-25 keywords total, organized into 4-5 topic clusters
+2. Each cluster should have 1 pillar topic (broad, 5000+ search volume) and 3-5 cluster topics (specific, 1000-5000 search volume)
+4. Track rapidly growing free tools (DeepSeek 88%, Google AI Studio 80% growth in 6 months)
+5. Keywords must be SEMANTICALLY UNIQUE - avoid variations of the same topic
+6. Each keyword should target a DISTINCT search intent
+7. Keywords with good search volume (1000+ monthly searches, free keywords often 5000+)
+8. Low to medium competition
+9. High commercial intent
+10. Relevance to AI tools, software, and productivity
+11. Avoid duplicate or near-duplicate keywords
+12. Get search volume as well and rank by them
 
 For each keyword opportunity, provide:
-- Primary keyword (e.g., "best AI video editing tools 2026")
-- Estimated search volume (number)
+- Primary keyword (e.g., "best free AI tools 2026" or "free ChatGPT alternatives")
+- Estimated search volume (number - free keywords should be 2-3x higher)
 - Competition score (0-100, where 0 is low competition)
 - 3-5 related/target keywords
+- Topic cluster name (e.g., "free-ai-tools", "ai-writing-tools")
+- Is pillar (true for broad topics, false for specific cluster topics)
 - Why this keyword is valuable and how it differs from similar keywords
 
-Format your response as a JSON array:
-[
-  {
-    "keyword": "Best AI Video Editing Tools 2026",
-    "searchVolume": 5000,
-    "competitionScore": 45,
-    "targetKeywords": ["AI video editor", "automated video editing", "AI video tools"],
-    "reasoning": "High search volume with growing interest in AI-powered video editing. Distinct from image editing tools."
-  }
-]
+Format your response as a JSON object with clusters:
+{
+  "clusters": [
+    {
+      "clusterName": "free-ai-tools",
+      "pillar": {
+        "keyword": "Free AI Tools",
+        "searchVolume": 10000,
+        "competitionScore": 60,
+        "targetKeywords": ["free AI software", "no cost AI tools", "free AI apps"],
+        "isPillar": true,
+        "reasoning": "High search volume with rapid tool growth. DeepSeek and Google AI Studio drive traffic."
+      },
+      "clusters": [
+        {
+          "keyword": "Best Free AI Tools 2026",
+          "searchVolume": 8000,
+          "competitionScore": 55,
+          "targetKeywords": ["free AI tools list", "best free AI software"],
+          "isPillar": false,
+          "reasoning": "High-volume search for comprehensive free tool lists."
+        },
+        {
+          "keyword": "Free ChatGPT Alternatives",
+          "searchVolume": 5000,
+          "competitionScore": 50,
+          "targetKeywords": ["free ChatGPT", "ChatGPT free alternative"],
+          "isPillar": false,
+          "reasoning": "Popular search as users seek free alternatives to ChatGPT."
+        }
+      ]
+    }
+  ]
+}
 
-Return ONLY valid JSON, no additional text.`;
+Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSON, no additional text.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: prompt,
-    });
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents: prompt,
+      });
+    }, 3, 8000);
 
     const text = response.text || '';
     
@@ -345,18 +438,72 @@ Return ONLY valid JSON, no additional text.`;
 
     if (jsonMatch) {
       try {
-        const results = JSON.parse(jsonMatch[0] || jsonMatch[1] || '[]');
-        return results.map((r: any) => ({
-          keyword: r.keyword,
-          slug: generateSlug(r.keyword),
-          title: `Best ${r.keyword} for 2026`,
-          metaDescription: `Discover the best ${r.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
-          searchVolume: r.searchVolume || 0,
-          competitionScore: r.competitionScore || 50,
-          targetKeywords: r.targetKeywords || [],
-          contentSections: [], // Will be generated separately
-          relatedToolIds: [], // Will be populated based on keyword
-        }));
+        const data = JSON.parse(jsonMatch[0] || jsonMatch[1] || '{}');
+        const results: SEOResearchResult[] = [];
+
+        // Handle new cluster structure
+        if (data.clusters && Array.isArray(data.clusters)) {
+          for (const cluster of data.clusters) {
+            const clusterName = cluster.clusterName || generateSlug(cluster.pillar?.keyword || 'cluster');
+            
+            // Add pillar page
+            if (cluster.pillar) {
+              const pillar = cluster.pillar;
+              results.push({
+                keyword: pillar.keyword,
+                slug: generateSlug(pillar.keyword),
+                title: pillar.isPillar 
+                  ? `${pillar.keyword} - Complete Guide 2026`
+                  : `Best ${pillar.keyword} for 2026`,
+                metaDescription: `Comprehensive guide to ${pillar.keyword.toLowerCase()}. Discover the best tools, features, and recommendations.`,
+                searchVolume: pillar.searchVolume || 0,
+                competitionScore: pillar.competitionScore || 50,
+                targetKeywords: pillar.targetKeywords || [],
+                contentSections: [],
+                relatedToolIds: [],
+                topicCluster: clusterName,
+                isPillar: true,
+              });
+            }
+
+            // Add cluster pages
+            if (cluster.clusters && Array.isArray(cluster.clusters)) {
+              cluster.clusters.forEach((clusterPage: any, index: number) => {
+                results.push({
+                  keyword: clusterPage.keyword,
+                  slug: generateSlug(clusterPage.keyword),
+                  title: `Best ${clusterPage.keyword} for 2026`,
+                  metaDescription: `Discover the best ${clusterPage.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
+                  searchVolume: clusterPage.searchVolume || 0,
+                  competitionScore: clusterPage.competitionScore || 50,
+                  targetKeywords: clusterPage.targetKeywords || [],
+                  contentSections: [],
+                  relatedToolIds: [],
+                  topicCluster: clusterName,
+                  pillarTopicId: cluster.pillar ? generateSlug(cluster.pillar.keyword) : undefined,
+                  clusterRank: index + 1,
+                  isPillar: false,
+                });
+              });
+            }
+          }
+        } else if (Array.isArray(data)) {
+          // Fallback to old format (array of keywords)
+          return data.map((r: any) => ({
+            keyword: r.keyword,
+            slug: generateSlug(r.keyword),
+            title: `Best ${r.keyword} for 2026`,
+            metaDescription: `Discover the best ${r.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
+            searchVolume: r.searchVolume || 0,
+            competitionScore: r.competitionScore || 50,
+            targetKeywords: r.targetKeywords || [],
+            contentSections: [],
+            relatedToolIds: [],
+          }));
+        }
+
+        console.log(`   ✓ Parsed ${results.length} keywords from ${data.clusters?.length || 0} topic clusters`);
+        return results;
       } catch (parseError) {
         console.error('Error parsing SEO research JSON:', parseError);
         return [];
@@ -372,8 +519,17 @@ Return ONLY valid JSON, no additional text.`;
 
 /**
  * Generate full page content for a keyword using Gemini
+ * @param keyword - The target keyword
+ * @param relatedTools - Related tools to include
+ * @param isPillar - Whether this is a pillar page (3000-4000 words) or cluster page (1500-2000 words)
+ * @param clusterInfo - Information about the topic cluster for internal linking
  */
-async function generatePageContent(keyword: string, relatedTools: any[]): Promise<SEOPageContent> {
+async function generatePageContent(
+  keyword: string, 
+  relatedTools: any[],
+  isPillar: boolean = false,
+  clusterInfo?: { clusterName: string; pillarSlug?: string; clusterPages?: string[] }
+): Promise<SEOPageContent> {
   const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
@@ -387,22 +543,36 @@ async function generatePageContent(keyword: string, relatedTools: any[]): Promis
       `${idx + 1}. ${tool.name} - ${tool.tagline} (Rating: ${tool.rating}%)`
     ).join('\n');
 
+    const wordCount = isPillar ? '3000-4000' : '1500-2000';
+    const pillarNote = isPillar 
+      ? '\nIMPORTANT: This is a PILLAR PAGE. It should be comprehensive and link to related cluster pages. Include a section linking to related topics.'
+      : clusterInfo?.pillarSlug
+        ? `\nIMPORTANT: This is a CLUSTER PAGE. Link back to the pillar page: "${clusterInfo.pillarSlug}". Also mention related cluster topics.`
+        : '';
+
     const prompt = `You are a professional SEO content writer specializing in AI tools and software reviews.
 
 Keyword: "${keyword}"
+${isPillar ? 'Type: Pillar Page (comprehensive guide)' : 'Type: Cluster Page (specific topic)'}
 
 Related AI Tools:
 ${toolsList || 'No specific tools provided'}
+${clusterInfo ? `\nTopic Cluster: ${clusterInfo.clusterName}` : ''}
+${pillarNote}
 
 Create a comprehensive, SEO-optimized page about "${keyword}" for an AI tools directory website.
 
 Requirements:
-1. Write engaging, informative content (1500-2000 words total)
+1. Write engaging, informative content (${wordCount} words total)
 2. Include natural keyword usage (don't stuff keywords)
 3. Structure with clear headings (H2, H3)
 4. Include an introduction, main sections, and conclusion
 5. Make it valuable for readers searching for this topic
 6. Include comparisons, features, and recommendations
+${isPillar ? '7. Include a section with links to related cluster topics' : ''}
+${!isPillar && clusterInfo?.pillarSlug ? '7. Include a link back to the pillar page in the introduction' : ''}
+${keyword.toLowerCase().includes('free') ? '8. Highlight free/freemium tools prominently, especially rapidly growing ones like DeepSeek and Google AI Studio' : ''}
+${keyword.toLowerCase().includes('free') ? '9. Include FAQs like "Is it really free?", "What are the limitations?"' : ''}
 
 FORMATTING STYLE:
 - Use single asterisks (*text*) for emphasis, NOT double asterisks (**text**)
@@ -413,8 +583,9 @@ FORMATTING STYLE:
 - Write in a clean, professional style
 
 Structure:
-- Introduction (2-3 paragraphs)
-- Main sections (3-5 sections with headings, each with bullet points and clear formatting)
+- Introduction (2-3 paragraphs${isPillar ? ', include overview of topic cluster' : ''})
+- Main sections (${isPillar ? '5-7' : '3-5'} sections with headings, each with bullet points and clear formatting)
+${isPillar ? '- Related Topics section (list cluster pages)' : ''}
 - Conclusion (1-2 paragraphs)
 
 Format your response as JSON:
@@ -438,10 +609,12 @@ Format your response as JSON:
 
 Return ONLY valid JSON, no additional text.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: prompt,
-    });
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents: prompt,
+      });
+    }, 3, 8000);
 
     const text = response.text || '';
     
@@ -508,8 +681,7 @@ async function generateFeaturedImage(keyword: string): Promise<string | null> {
   }
 
   try {
-    // Import S3 service
-    const { uploadImageToS3, generateImageFilename } = await import('./s3Service');
+    // S3 service is now statically imported at the top of the file
     
     // Create a descriptive prompt for the featured image
     const imagePrompt = `Create a professional, modern featured image for an SEO article about "${keyword}". 
@@ -527,10 +699,10 @@ Style: Modern tech, minimalist, clean, professional`;
 
     console.log(`   🎨 Generating AI image with Gemini...`);
 
-    // Use Gemini REST API for image generation
+    // Use Gemini REST API for image generation (Gemini 3 Pro Image - Nano Banana Pro)
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -717,9 +889,25 @@ export async function generateSEOPages(): Promise<{ researched: number; generate
         }
         console.log(`   ✅ No duplicates found`);
 
-        // Generate page content
-        const pageContent = await generatePageContent(opportunity.keyword, relatedTools);
-        console.log(`   ✅ Generated content with ${pageContent.sections.length} sections`);
+        // Prepare cluster info for internal linking
+        const clusterInfo = opportunity.topicCluster ? {
+          clusterName: opportunity.topicCluster,
+          pillarSlug: opportunity.pillarTopicId,
+          clusterPages: opportunity.isPillar 
+            ? seoOpportunities
+                .filter(o => o.topicCluster === opportunity.topicCluster && !o.isPillar)
+                .map(o => o.slug)
+            : undefined,
+        } : undefined;
+
+        // Generate page content (with appropriate word count for pillar vs cluster)
+        const pageContent = await generatePageContent(
+          opportunity.keyword, 
+          relatedTools,
+          opportunity.isPillar || false,
+          clusterInfo
+        );
+        console.log(`   ✅ Generated content with ${pageContent.sections.length} sections (${opportunity.isPillar ? 'Pillar' : 'Cluster'} page)`);
 
         // Validate SEO best practices
         console.log(`   ✅ Validating SEO best practices...`);
@@ -756,7 +944,7 @@ export async function generateSEOPages(): Promise<{ researched: number; generate
         const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
         const canonicalUrl = `${baseUrl}/blog/${opportunity.slug}`;
 
-        // Save to database
+        // Save to database with topic clustering fields
         await seoPagesRepo.upsert({
           id: opportunity.slug, // Use slug as ID
           slug: opportunity.slug,
@@ -779,7 +967,12 @@ export async function generateSEOPages(): Promise<{ researched: number; generate
           validationIssues: [...seoValidation.issues, ...seoValidation.warnings],
           isPublished: true,
           lastGeneratedAt: new Date(),
-        });
+          // Topic clustering fields
+          topicCluster: opportunity.topicCluster || null,
+          pillarTopicId: opportunity.pillarTopicId || null,
+          clusterRank: opportunity.clusterRank || null,
+          isPillar: opportunity.isPillar || false,
+        } as any); // Type assertion to include new fields
 
         console.log(`   💾 Saved to database`);
         generated++;

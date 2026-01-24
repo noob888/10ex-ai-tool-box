@@ -12,8 +12,57 @@ interface NewsSearchResult {
 }
 
 /**
- * Search for latest AI news using Gemini with Google Search grounding
+ * Sleep/delay utility
  */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Retry with exponential backoff for rate limit errors
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelay: number = 1000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a rate limit error (429)
+      if (error?.status === 429 || error?.message?.includes('quota') || error?.message?.includes('429')) {
+        const delay = initialDelay * Math.pow(2, attempt);
+        // Try to extract retry delay from error details (Gemini API provides this in error.details)
+        let retryAfter = delay;
+        if (error?.retryDelay) {
+          retryAfter = error.retryDelay;
+        } else if (error?.details && Array.isArray(error.details)) {
+          const retryInfo = error.details.find((d: any) => d['@type'] === 'type.googleapis.com/google.rpc.RetryInfo');
+          if (retryInfo?.retryDelay) {
+            // Convert seconds to milliseconds if needed
+            retryAfter = typeof retryInfo.retryDelay === 'number' 
+              ? retryInfo.retryDelay * 1000 
+              : retryInfo.retryDelay;
+          }
+        }
+        console.log(`   ⏳ Rate limit hit, waiting ${retryAfter}ms before retry (attempt ${attempt + 1}/${maxRetries})...`);
+        await sleep(retryAfter);
+        continue;
+      }
+      
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
+  
+  throw lastError;
+}
+
 async function searchAINews(query: string, maxResults: number = 10): Promise<NewsSearchResult[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   
@@ -71,10 +120,13 @@ Return ONLY valid JSON, no additional text. Focus on recent, high-quality AI new
     
     // Use Gemini to search and extract AI news
     // The model can access real-time information through its training
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp",
-      contents: prompt,
-    });
+    // Add retry logic for rate limits
+    const response = await retryWithBackoff(async () => {
+      return await ai.models.generateContent({
+        model: "gemini-2.0-flash-exp",
+        contents: prompt,
+      });
+    }, 3, 8000); // 3 retries, 8 second initial delay (to stay under 10 req/min)
 
     const text = response.text || '';
     
@@ -362,9 +414,19 @@ export async function fetchAINewsWithAgent(): Promise<{ fetched: number; saved: 
   ];
 
   try {
-    for (const query of searchQueries) {
+    for (let i = 0; i < searchQueries.length; i++) {
+      const query = searchQueries[i];
       try {
         console.log(`\n🔍 Searching for: ${query}`);
+        
+        // Add delay between requests to avoid rate limits (10 req/min = 6 seconds between requests)
+        // Add extra buffer for safety
+        if (i > 0) {
+          const delayMs = 7000; // 7 seconds between requests
+          console.log(`   ⏳ Waiting ${delayMs/1000}s to avoid rate limits...`);
+          await sleep(delayMs);
+        }
+        
         const results = await searchAINews(query, 5);
         fetched += results.length;
         console.log(`   Found ${results.length} articles`);

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Tool } from '../types';
 import { Star, Zap, ThumbsUp, Heart, ArrowUpRight } from 'lucide-react';
+import { useLoading } from './LoadingProvider';
 
 interface Props {
   tool: Tool;
@@ -15,14 +16,26 @@ interface Props {
 }
 
 export const ToolCard: React.FC<Props> = ({ tool, isLiked, isStarred, onClick, onVote, onLike, onStar }) => {
+  const { setLoading, setLoadingMessage } = useLoading();
+
+  const handleClick = () => {
+    setLoading(true);
+    setLoadingMessage(`Loading ${tool.name}...`);
+    onClick(tool);
+  };
+
   return (
     <div 
-      onClick={() => onClick(tool)}
+      onClick={handleClick}
       className="group glass p-4 rounded-lg cursor-pointer card-hover border border-[#1f1f1f] flex flex-col h-full bg-[#0a0a0a]"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded bg-[#1f1f1f] flex items-center justify-center text-sm font-bold border border-[#222] group-hover:border-[#333]">
+          <div 
+            className="w-10 h-10 rounded bg-[#1f1f1f] flex items-center justify-center text-sm font-bold border border-[#222] group-hover:border-[#333]"
+            role="img"
+            aria-label={`${tool.name} logo`}
+          >
             {tool.name[0]}
           </div>
           <div>

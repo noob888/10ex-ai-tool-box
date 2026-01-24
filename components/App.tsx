@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navigation } from './Navigation';
 import { ToolCard } from './ToolCard';
 import { ChatInterface } from './ChatInterface';
@@ -9,6 +10,7 @@ import { PromptLibrary } from './PromptLibrary';
 import { SEOSection } from './SEOPages';
 import { ToolListStructuredData } from './StructuredData';
 import { NewsCard, NewsArticle } from './NewsCard';
+import { CategoryNavigation } from './CategoryNavigation';
 import { Category, Tool, User } from '@/types';
 import { 
   Search, TrendingUp, X, Copy, Rocket, Box, Zap, 
@@ -111,6 +113,7 @@ const useNews = () => {
 };
 
 const App: React.FC = () => {
+  const router = useRouter();
   const { tools: toolsDataset, loading: toolsLoading } = useTools();
   const { prompts: promptsDataset, loading: promptsLoading } = usePrompts();
   const { news: newsArticles, loading: newsLoading } = useNews();
@@ -119,7 +122,6 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<Category | 'All'>('All');
   const [fatigueMode, setFatigueMode] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const [heroQuery, setHeroQuery] = useState('');
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -128,6 +130,11 @@ const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [seoTarget, setSeoTarget] = useState<{ keyword: string, toolId?: string } | null>(null);
   const [displayedToolsCount, setDisplayedToolsCount] = useState(24);
+
+  // Navigate to tool detail page instead of opening modal
+  const handleToolClick = (tool: Tool) => {
+    router.push(`/tool/${tool.id}`);
+  };
 
   // URL Sync for SEO
   useEffect(() => {
@@ -373,7 +380,7 @@ const App: React.FC = () => {
             setSeoTarget(null);
             setActiveTab('discover');
           }}
-          onToolClick={setSelectedTool}
+          onToolClick={handleToolClick}
           onVote={() => handleAction(() => setShowLeadModal(true))}
           onLike={handleLike}
           onStar={handleStar}
@@ -391,14 +398,14 @@ const App: React.FC = () => {
               setActiveTab('discover');
               setHeroQuery('');
             }}
-            onToolClick={setSelectedTool}
-            onVote={async () => {
-              if (user && selectedTool) {
+            onToolClick={handleToolClick}
+            onVote={async (tool: Tool) => {
+              if (user) {
                 try {
                   await fetch('/api/tools/vote', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ toolId: selectedTool.id, userId: user.id }),
+                    body: JSON.stringify({ toolId: tool.id, userId: user.id }),
                   });
                   setShowLeadModal(true);
                 } catch (error) {
@@ -435,7 +442,7 @@ const App: React.FC = () => {
                       tool={tool} 
                       isLiked={user?.likedToolIds.includes(tool.id)}
                       isStarred={user?.starredToolIds.includes(tool.id)}
-                      onClick={setSelectedTool} 
+                      onClick={handleToolClick} 
                       onVote={() => handleAction(() => setShowLeadModal(true))}
                       onLike={handleLike}
                       onStar={handleStar}
@@ -444,6 +451,7 @@ const App: React.FC = () => {
                 </div>
               </div>
               <div className="md:col-span-4 space-y-8">
+                <CategoryNavigation />
                 <div className="space-y-2">
                   <h2 className="text-xl font-black flex items-center gap-3"><Newspaper size={20} /> Latest AI News</h2>
                   <p className="text-[#888] text-xs font-medium uppercase tracking-widest">Real-time AI Updates</p>
@@ -495,7 +503,7 @@ const App: React.FC = () => {
                   <h3 className="text-xs font-bold uppercase tracking-widest text-[#444] mb-6">{cat}</h3>
                   <div className="space-y-3">
                     {toolsDataset.filter(t => t.category === cat).sort((a,b) => b.rating - a.rating).slice(0, 5).map((t, i) => (
-                      <div key={t.id} className="flex items-center gap-4 p-3 rounded hover:bg-[#111] cursor-pointer group transition-all" onClick={() => setSelectedTool(t)}>
+                      <div key={t.id} className="flex items-center gap-4 p-3 rounded hover:bg-[#111] cursor-pointer group transition-all" onClick={() => handleToolClick(t)}>
                         <span className="text-[10px] font-black text-[#222] w-4">0{i+1}</span>
                         <p className="text-xs font-bold text-[#666] flex-1 group-hover:text-white">{t.name}</p>
                         <p className="text-[10px] font-black text-electric-blue">{t.rating}%</p>
@@ -511,7 +519,7 @@ const App: React.FC = () => {
         return (
           <StackBuilder 
             tools={toolsDataset} 
-            onToolClick={setSelectedTool} 
+            onToolClick={handleToolClick} 
             onVote={(tool) => handleAction(() => setShowLeadModal(true))}
             onLike={handleLike}
             onStar={handleStar}
@@ -547,6 +555,16 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
+              </>
+            )}
+
+            {/* Category Navigation - Always Visible */}
+            <div className="py-8 border-b border-[#1f1f1f]">
+              <CategoryNavigation />
+            </div>
+
+            {!fatigueMode && (
+              <>
 
                 {/* Featured News Section */}
                 {featuredNews.length > 0 && (
@@ -644,7 +662,7 @@ const App: React.FC = () => {
                     tool={tool} 
                     isLiked={user?.likedToolIds.includes(tool.id)}
                     isStarred={user?.starredToolIds.includes(tool.id)}
-                    onClick={setSelectedTool} 
+                    onClick={handleToolClick} 
                     onVote={() => handleAction(() => setShowLeadModal(true))}
                     onLike={handleLike}
                     onStar={handleStar}
@@ -925,22 +943,7 @@ const App: React.FC = () => {
               <button 
                 onClick={async () => { 
                   setShowLeadModal(false);
-                  if (user && selectedTool) {
-                    try {
-                      await fetch('/api/tools/vote', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ toolId: selectedTool.id, userId: user.id }),
-                      });
-                      const userResponse = await fetch(`/api/users?id=${user.id}`);
-                      const userData = await userResponse.json();
-                      if (userData.user) {
-                        setUser(userData.user);
-                      }
-                    } catch (error) {
-                      console.error('Error voting:', error);
-                    }
-                  }
+                  // Voting will be handled on the tool detail page
                 }}
                 className="w-full bg-white text-black py-4 rounded font-bold text-xs uppercase tracking-widest hover:bg-[#eee] transition-all"
               >
@@ -950,71 +953,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {selectedTool && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-black/95" onClick={() => setSelectedTool(null)}></div>
-          <div className="relative bg-[#0a0a0a] w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg border border-[#1f1f1f] p-8 md:p-14 animate-in zoom-in-95 duration-200 scrollbar-hide shadow-[0_0_100px_rgba(0,0,0,1)]">
-            <button onClick={() => setSelectedTool(null)} className="absolute top-8 right-8 p-2 hover:bg-[#111] rounded transition-colors text-[#444] hover:text-white"><X size={24} /></button>
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12">
-              <div className="w-24 h-24 rounded bg-white text-black flex items-center justify-center text-4xl font-black shrink-0">{selectedTool.name[0]}</div>
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-4">
-                  <h2 className="text-4xl font-black tracking-tight uppercase italic">{selectedTool.name}</h2>
-                  <span className="bg-black text-[#666] text-[10px] px-2.5 py-1 rounded font-bold uppercase tracking-widest border border-[#1f1f1f]">{selectedTool.category}</span>
-                </div>
-                <p className="text-lg text-[#888] font-medium leading-relaxed">{selectedTool.tagline}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-              <div className="lg:col-span-7 space-y-10">
-                <section className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#444]">Analysis Engine</h3>
-                  <p className="text-[#aaa] leading-relaxed text-base font-medium italic">"{selectedTool.description}"</p>
-                </section>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="p-6 rounded border border-[#1f1f1f] bg-black space-y-4">
-                    <h4 className="text-[10px] font-black text-green-500 uppercase tracking-widest">Strengths</h4>
-                    <ul className="space-y-3">
-                      {selectedTool.strengths.map((s, i) => (
-                        <li key={i} className="text-[11px] text-[#666] font-bold flex items-center gap-2 italic"><div className="w-1.5 h-1.5 rounded-full bg-green-500" /> {s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="p-6 rounded border border-[#1f1f1f] bg-black space-y-4">
-                    <h4 className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Risks</h4>
-                    <ul className="space-y-3">
-                      {selectedTool.weaknesses.map((s, i) => (
-                        <li key={i} className="text-[11px] text-[#666] font-bold flex items-center gap-2 italic"><div className="w-1.5 h-1.5 rounded-full bg-pink-500" /> {s}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-5 space-y-10">
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={() => handleAction(() => window.open(selectedTool.websiteUrl, '_blank'))}
-                    className="bg-white text-black py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:bg-[#eee] transition-all uppercase tracking-widest"
-                  >
-                    Open Resource <ArrowUpRight size={18} />
-                  </button>
-                  <button onClick={() => handleAction(() => setShowLeadModal(true))} className="bg-black border border-[#1f1f1f] text-[#888] py-4 rounded font-bold text-xs flex items-center justify-center gap-3 hover:text-white transition-all uppercase tracking-widest">
-                    <ThumbsUp size={16} /> Upvote
-                  </button>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleLike(selectedTool)} className={`flex-1 border border-[#1f1f1f] py-4 rounded flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${user?.likedToolIds.includes(selectedTool.id) ? 'text-pink-500 border-pink-500/20 bg-pink-500/5' : 'text-[#444] hover:text-white'}`}>
-                      <Heart size={14} fill={user?.likedToolIds.includes(selectedTool.id) ? "currentColor" : "none"} /> {user?.likedToolIds.includes(selectedTool.id) ? 'Liked' : 'Like'}
-                    </button>
-                    <button onClick={() => handleStar(selectedTool)} className={`flex-1 border border-[#1f1f1f] py-4 rounded flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${user?.starredToolIds.includes(selectedTool.id) ? 'text-yellow-500 border-yellow-500/20 bg-yellow-500/5' : 'text-[#444] hover:text-white'}`}>
-                      <Star size={14} fill={user?.starredToolIds.includes(selectedTool.id) ? "currentColor" : "none"} /> {user?.starredToolIds.includes(selectedTool.id) ? 'Saved' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     </>
   );

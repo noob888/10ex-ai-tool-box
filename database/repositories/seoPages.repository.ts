@@ -27,6 +27,11 @@ export interface SEOPage {
   createdAt: Date;
   updatedAt: Date;
   lastGeneratedAt: Date | null;
+  // Topic clustering fields (added in migration 005)
+  topicCluster?: string | null;
+  pillarTopicId?: string | null;
+  clusterRank?: number | null;
+  isPillar?: boolean | null;
 }
 
 export class SEOPagesRepository {
@@ -162,6 +167,12 @@ export class SEOPagesRepository {
         .map(kw => String(kw))
         .filter(kw => kw.length > 0);
 
+      // Extract topic clustering fields (with type assertion for flexibility)
+      const topicCluster = (page as any).topicCluster || null;
+      const pillarTopicId = (page as any).pillarTopicId || null;
+      const clusterRank = (page as any).clusterRank || null;
+      const isPillar = (page as any).isPillar || false;
+
       if (existing) {
         // Update existing page
         const result = await pool.query(
@@ -179,9 +190,13 @@ export class SEOPagesRepository {
             related_tools = $11,
             structured_data = $12,
             is_published = $13,
+            topic_cluster = $14,
+            pillar_topic_id = $15,
+            cluster_rank = $16,
+            is_pillar = $17,
             updated_at = CURRENT_TIMESTAMP,
             last_generated_at = CURRENT_TIMESTAMP
-          WHERE slug = $14
+          WHERE slug = $18
           RETURNING *`,
           [
             page.keyword,
@@ -197,6 +212,10 @@ export class SEOPagesRepository {
             JSON.stringify(relatedToolIdsToSave), // Use validated related tool IDs (JSONB - must be stringified)
             JSON.stringify(structuredDataToSave),
             page.isPublished !== false,
+            topicCluster,
+            pillarTopicId,
+            clusterRank,
+            isPillar,
             page.slug,
           ]
         );
@@ -211,8 +230,9 @@ export class SEOPagesRepository {
         `INSERT INTO toolbox_seo_pages (
           id, slug, keyword, title, meta_description, featured_image_url, content, introduction,
           sections, target_keywords, search_volume, competition_score,
-          related_tools, structured_data, canonical_url, seo_score, validation_issues, is_published, last_generated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
+          related_tools, structured_data, canonical_url, seo_score, validation_issues, is_published, last_generated_at,
+          topic_cluster, pillar_topic_id, cluster_rank, is_pillar
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP, $19, $20, $21, $22)
         RETURNING *`,
         [
           id,
@@ -233,6 +253,10 @@ export class SEOPagesRepository {
           page.seoScore || 0,
           JSON.stringify(validationIssuesToSave), // Use validated validation issues
           page.isPublished !== false,
+          topicCluster,
+          pillarTopicId,
+          clusterRank,
+          isPillar,
         ]
       );
       return this.mapToSEOPage(result.rows[0]);
@@ -271,6 +295,11 @@ export class SEOPagesRepository {
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
       lastGeneratedAt: row.last_generated_at ? new Date(row.last_generated_at) : null,
+      // Topic clustering fields
+      topicCluster: row.topic_cluster || null,
+      pillarTopicId: row.pillar_topic_id || null,
+      clusterRank: row.cluster_rank || null,
+      isPillar: row.is_pillar || false,
     };
   }
 

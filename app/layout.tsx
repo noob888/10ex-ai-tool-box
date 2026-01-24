@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { LoadingProvider } from '@/components/LoadingProvider';
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Tool Box - Best AI Tools Directory 2026 | Top ChatGPT Alternatives',
+    default: 'AI Tool Box - Best AI Tools Directory 2026',
     template: '%s | AI Tool Box'
   },
-  description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including ChatGPT alternatives, writing tools, design tools, coding assistants, and more. Compare, review, and find your perfect AI stack.',
+  description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including writing tools, design tools, coding assistants, and more. Compare, review, and find your perfect AI stack.',
   keywords: [
     'AI tools',
     'AI tool directory',
-    'ChatGPT alternatives',
     'best AI tools 2026',
     'AI writing tools',
     'AI design tools',
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'AI Tool Box',
     title: 'AI Tool Box - Best AI Tools Directory 2026',
-    description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including ChatGPT alternatives, writing tools, design tools, and more.',
+    description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including writing tools, design tools, and more.',
     images: [
       {
         url: '/og-image.png',
@@ -90,7 +90,7 @@ export default function RootLayout({
               "@type": "WebSite",
               "name": "AI Tool Box",
               "url": process.env.NEXT_PUBLIC_SITE_URL || "https://tools.10ex.ai",
-              "description": "The definitive AI tool directory curated for solo-hackers. Discover 600+ AI tools including ChatGPT alternatives, writing tools, design tools, and more.",
+              "description": "The definitive AI tool directory curated for solo-hackers. Discover 600+ AI tools including writing tools, design tools, and more.",
               "publisher": {
                 "@type": "Organization",
                 "name": "10EX.AI",
@@ -108,7 +108,11 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <LoadingProvider>
+          {children}
+        </LoadingProvider>
+      </body>
     </html>
   );
 }

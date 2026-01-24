@@ -4,6 +4,7 @@ import { SEOSection } from '@/components/SEOPages';
 import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { SEOPagesRepository } from '@/database/repositories/seoPages.repository';
 import { Category } from '@/types';
+import { Breadcrumbs } from '@/components/Breadcrumbs';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -163,6 +164,36 @@ export default async function SEOPage({ params }: Props) {
     // Continue without structured data tools
   }
 
+  // Generate Article schema for blog post
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai';
+  const articleData = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": seoPage?.title || `Best ${keyword} for 2026`,
+    "description": seoPage?.metaDescription || `Discover the best ${keyword.toLowerCase()} in 2026. Comprehensive guide with reviews and recommendations.`,
+    "url": `${baseUrl}/blog/${slug}`,
+    "datePublished": seoPage?.createdAt ? new Date(seoPage.createdAt).toISOString() : new Date().toISOString(),
+    "dateModified": seoPage?.updatedAt ? new Date(seoPage.updatedAt).toISOString() : new Date().toISOString(),
+    "author": {
+      "@type": "Organization",
+      "name": "10ex AI Toolbox",
+      "url": baseUrl,
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "10ex AI Toolbox",
+      "url": baseUrl,
+    },
+    ...(seoPage?.featuredImageUrl && {
+      "image": {
+        "@type": "ImageObject",
+        "url": seoPage.featuredImageUrl,
+        "width": 1200,
+        "height": 630,
+      },
+    }),
+  };
+
   // Generate structured data (use from DB if available, otherwise generate)
   const structuredData = seoPage?.structuredData || {
     "@context": "https://schema.org",
@@ -179,7 +210,7 @@ export default async function SEOPage({ params }: Props) {
           "@type": "SoftwareApplication",
           "name": tool.name,
           "description": tool.tagline,
-          "url": `${process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai'}/tool/${tool.id}`,
+          "url": `${baseUrl}/tool/${tool.id}`,
         },
       })),
     },
@@ -190,18 +221,32 @@ export default async function SEOPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleData),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
           __html: JSON.stringify(structuredData),
         }}
       />
       <div className="min-h-screen pt-20 pb-16 px-4">
-        <SEOSection
-          keyword={keyword}
-          relatedToolIds={relatedToolIds.length > 0 ? relatedToolIds.slice(0, 10) : undefined}
-          category={category || undefined}
-          featuredImageUrl={seoPage?.featuredImageUrl || null}
-          introduction={seoPage?.introduction || null}
-          sections={seoPage?.sections || undefined}
-        />
+        <div className="max-w-4xl mx-auto">
+          <Breadcrumbs
+            items={[
+              { label: 'Blog', href: '/blog' },
+              { label: keyword },
+            ]}
+          />
+          <SEOSection
+            keyword={keyword}
+            relatedToolIds={relatedToolIds.length > 0 ? relatedToolIds.slice(0, 10) : undefined}
+            category={category || undefined}
+            featuredImageUrl={seoPage?.featuredImageUrl || null}
+            introduction={seoPage?.introduction || null}
+            sections={seoPage?.sections || undefined}
+          />
+        </div>
       </div>
     </>
   );

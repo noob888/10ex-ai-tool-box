@@ -11,7 +11,17 @@
     "db:seed": "tsx database/scripts/seed.ts",
     "db:drop-old": "tsx database/scripts/drop_old_tables.ts",
     "db:cleanup-broken-urls": "tsx database/scripts/cleanup-broken-urls.ts",
-    "db:cleanup-base64-images": "tsx database/scripts/cleanup-base64-images.ts"
+    "db:cleanup-base64-images": "tsx database/scripts/cleanup-base64-images.ts",
+    "test:cron": "tsx test-cron-jobs.ts",
+    "test:image": "tsx test-image-generation.ts",
+    "test:seo": "tsx test-seo-only.ts",
+    "test:tools-agent": "tsx -e \"import('./services/toolsAgent').then(m => m.discoverAndSaveTools())\"",
+    "db:audit-canonicals": "tsx database/scripts/audit-canonicals.ts",
+    "db:generate-clusters": "tsx database/scripts/generate-topic-clusters.ts",
+    "db:seed-enrichment": "tsx database/scripts/seed-tool-enrichment.ts",
+    "db:check-enrichment": "tsx database/scripts/check-enrichment-status.ts",
+    "db:discover-tools": "tsx database/scripts/discover-trending-tools.ts",
+    "db:discover-prompts": "tsx database/scripts/discover-prompts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",

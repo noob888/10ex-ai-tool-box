@@ -109,7 +109,51 @@ export class ToolsRepository {
     const pool = getDatabasePool();
     const dbTool = this.mapToDatabaseTool(tool);
     
-    const query = `
+    // Check if discovery fields exist (from migration 004)
+    const hasDiscoveryFields = dbTool.discovered_at !== undefined || 
+                               dbTool.discovery_source !== undefined ||
+                               dbTool.growth_rate_6mo !== undefined ||
+                               dbTool.is_rapidly_growing !== undefined ||
+                               dbTool.monthly_visits !== undefined;
+
+    const query = hasDiscoveryFields ? `
+      INSERT INTO toolbox_tools (
+        id, name, tagline, category, sub_category, description,
+        strengths, weaknesses, pricing, rating, popularity, votes,
+        alternatives, best_for, overkill_for, is_verified, launch_date, website_url,
+        discovered_at, discovery_source, last_verified_at, verification_status,
+        growth_rate_6mo, is_rapidly_growing, monthly_visits
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
+        $19, $20, $21, $22, $23, $24, $25
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        tagline = EXCLUDED.tagline,
+        category = EXCLUDED.category,
+        sub_category = EXCLUDED.sub_category,
+        description = EXCLUDED.description,
+        strengths = EXCLUDED.strengths,
+        weaknesses = EXCLUDED.weaknesses,
+        pricing = EXCLUDED.pricing,
+        rating = EXCLUDED.rating,
+        popularity = EXCLUDED.popularity,
+        votes = EXCLUDED.votes,
+        alternatives = EXCLUDED.alternatives,
+        best_for = EXCLUDED.best_for,
+        overkill_for = EXCLUDED.overkill_for,
+        is_verified = EXCLUDED.is_verified,
+        website_url = EXCLUDED.website_url,
+        discovered_at = COALESCE(EXCLUDED.discovered_at, toolbox_tools.discovered_at),
+        discovery_source = COALESCE(EXCLUDED.discovery_source, toolbox_tools.discovery_source),
+        last_verified_at = COALESCE(EXCLUDED.last_verified_at, toolbox_tools.last_verified_at),
+        verification_status = COALESCE(EXCLUDED.verification_status, toolbox_tools.verification_status),
+        growth_rate_6mo = COALESCE(EXCLUDED.growth_rate_6mo, toolbox_tools.growth_rate_6mo),
+        is_rapidly_growing = COALESCE(EXCLUDED.is_rapidly_growing, toolbox_tools.is_rapidly_growing),
+        monthly_visits = COALESCE(EXCLUDED.monthly_visits, toolbox_tools.monthly_visits),
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    ` : `
       INSERT INTO toolbox_tools (
         id, name, tagline, category, sub_category, description,
         strengths, weaknesses, pricing, rating, popularity, votes,
@@ -138,7 +182,7 @@ export class ToolsRepository {
       RETURNING *
     `;
 
-    const result = await pool.query(query, [
+    const params = hasDiscoveryFields ? [
       dbTool.id,
       dbTool.name,
       dbTool.tagline,
@@ -157,7 +201,35 @@ export class ToolsRepository {
       dbTool.is_verified,
       dbTool.launch_date,
       dbTool.website_url,
-    ]);
+      dbTool.discovered_at || null,
+      dbTool.discovery_source || 'manual',
+      dbTool.last_verified_at || null,
+      dbTool.verification_status || 'pending',
+      dbTool.growth_rate_6mo || null,
+      dbTool.is_rapidly_growing || false,
+      dbTool.monthly_visits || null,
+    ] : [
+      dbTool.id,
+      dbTool.name,
+      dbTool.tagline,
+      dbTool.category,
+      dbTool.sub_category,
+      dbTool.description,
+      JSON.stringify(dbTool.strengths),
+      JSON.stringify(dbTool.weaknesses),
+      dbTool.pricing,
+      dbTool.rating,
+      dbTool.popularity,
+      dbTool.votes,
+      JSON.stringify(dbTool.alternatives),
+      dbTool.best_for,
+      dbTool.overkill_for,
+      dbTool.is_verified,
+      dbTool.launch_date,
+      dbTool.website_url,
+    ];
+
+    const result = await pool.query(query, params);
 
     return this.mapToTool(result.rows[0]);
   }
@@ -201,7 +273,7 @@ export class ToolsRepository {
    * Map Tool entity to database format
    */
   private mapToDatabaseTool(tool: Partial<Tool>): Partial<DatabaseTool> {
-    return {
+    const dbTool: Partial<DatabaseTool> = {
       id: tool.id,
       name: tool.name,
       tagline: tool.tagline,
@@ -221,6 +293,90 @@ export class ToolsRepository {
       launch_date: tool.launchDate ? new Date(tool.launchDate) : undefined,
       website_url: tool.websiteUrl,
     };
+
+    // Add discovery fields if they exist (from extended Tool type or direct assignment)
+    if ((tool as any).discoveredAt !== undefined) {
+      dbTool.discovered_at = (tool as any).discoveredAt ? new Date((tool as any).discoveredAt) : null;
+    }
+    if ((tool as any).discoverySource !== undefined) {
+      dbTool.discovery_source = (tool as any).discoverySource || null;
+    }
+    if ((tool as any).lastVerifiedAt !== undefined) {
+      dbTool.last_verified_at = (tool as any).lastVerifiedAt ? new Date((tool as any).lastVerifiedAt) : null;
+    }
+    if ((tool as any).verificationStatus !== undefined) {
+      dbTool.verification_status = (tool as any).verificationStatus || null;
+    }
+    if ((tool as any).growthRate6mo !== undefined) {
+      dbTool.growth_rate_6mo = (tool as any).growthRate6mo || null;
+    }
+    if ((tool as any).isRapidlyGrowing !== undefined) {
+      dbTool.is_rapidly_growing = (tool as any).isRapidlyGrowing || false;
+    }
+    if ((tool as any).monthlyVisits !== undefined) {
+      dbTool.monthly_visits = (tool as any).monthlyVisits || null;
+    }
+
+    return dbTool;
+  }
+
+  /**
+   * Update FAQs for a tool
+   */
+  async updateFAQs(toolId: string, faqs: any[]): Promise<void> {
+    const pool = getDatabasePool();
+    await pool.query(
+      'UPDATE toolbox_tools SET faqs = $1, faqs_generated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [JSON.stringify(faqs), toolId]
+    );
+  }
+
+  /**
+   * Update use cases for a tool
+   */
+  async updateUseCases(toolId: string, useCases: any[]): Promise<void> {
+    const pool = getDatabasePool();
+    await pool.query(
+      'UPDATE toolbox_tools SET use_cases = $1, use_cases_generated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [JSON.stringify(useCases), toolId]
+    );
+  }
+
+  /**
+   * Get FAQs and use cases for a tool
+   */
+  async getEnrichment(toolId: string): Promise<{ faqs: any[]; useCases: any[] }> {
+    const pool = getDatabasePool();
+    const result = await pool.query(
+      'SELECT faqs, use_cases FROM toolbox_tools WHERE id = $1',
+      [toolId]
+    );
+    
+    if (result.rows.length === 0) {
+      return { faqs: [], useCases: [] };
+    }
+
+    const row = result.rows[0];
+    return {
+      faqs: Array.isArray(row.faqs) ? row.faqs : [],
+      useCases: Array.isArray(row.use_cases) ? row.use_cases : [],
+    };
+  }
+
+  /**
+   * Get all tools that need FAQs or use cases generated
+   */
+  async findToolsNeedingEnrichment(limit: number = 50): Promise<Tool[]> {
+    const pool = getDatabasePool();
+    const result = await pool.query(
+      `SELECT * FROM toolbox_tools 
+       WHERE (faqs IS NULL OR faqs = '[]'::jsonb OR faqs_generated_at IS NULL)
+          OR (use_cases IS NULL OR use_cases = '[]'::jsonb OR use_cases_generated_at IS NULL)
+       ORDER BY votes DESC, rating DESC
+       LIMIT $1`,
+      [limit]
+    );
+    return result.rows.map(this.mapToTool);
   }
 }
 

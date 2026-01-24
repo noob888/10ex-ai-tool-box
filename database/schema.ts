@@ -33,6 +33,19 @@ export interface DatabaseTool {
   website_url: string;
   created_at: Date;
   updated_at: Date;
+  // Discovery fields (added in migration 004)
+  discovered_at?: Date | null;
+  discovery_source?: string | null;
+  last_verified_at?: Date | null;
+  verification_status?: string | null;
+  growth_rate_6mo?: number | null;
+  is_rapidly_growing?: boolean | null;
+  monthly_visits?: number | null;
+  // Enrichment fields (added in migration 006)
+  faqs?: any[]; // JSONB array of FAQ items
+  use_cases?: any[]; // JSONB array of use cases
+  faqs_generated_at?: Date | null;
+  use_cases_generated_at?: Date | null;
 }
 
 export interface DatabasePromptTemplate {
