@@ -115,12 +115,12 @@ IMPORTANT REQUIREMENTS:
 7. Ensure prompts are appropriate and safe
 
 For each prompt found, extract:
-- Title (clear, descriptive name for the prompt, max 100 chars)
-- Category (one of: Writing & Content, Research & Search, Sales & Outreach, Marketing & Ads, Design & Images, Video & Audio, Coding & Dev Tools, Data & Analytics, Automation & Agents, Customer Support, HR & Recruiting, Productivity & Knowledge, Founders & Startups, Enterprise & Ops)
-- Use Case (brief description of what this prompt is used for, max 150 chars)
-- Prompt (the complete, full prompt text - DO NOT truncate)
+- Title (Clear, descriptive name for the prompt, max 100 chars)
+- Category (One of: Writing & Content, Research & Search, Sales & Outreach, Marketing & Ads, Design & Images, Video & Audio, Coding & Dev Tools, Data & Analytics, Automation & Agents, Customer Support, HR & Recruiting, Productivity & Knowledge, Founders & Startups, Enterprise & Ops)
+- Use Case (Brief description of what this prompt is used for, max 150 chars)
+- Prompt (The complete, full prompt text - DO NOT truncate)
 - Level (Beginner, Advanced, or Pro - based on complexity)
-- Source (optional: where you found it, e.g., "PromptBase", "FlowGPT", "GitHub", "Reddit")
+- Source (Where you found it, e.g., "PromptBase", "FlowGPT", "GitHub", "Reddit")
 
 Return results as a JSON array:
 [

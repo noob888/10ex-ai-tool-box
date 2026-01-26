@@ -92,7 +92,10 @@ interface SEOPageContent {
 /**
  * Generate slug from keyword
  */
-function generateSlug(keyword: string): string {
+function generateSlug(keyword: string | null | undefined): string {
+  if (!keyword || typeof keyword !== 'string') {
+    return 'untitled';
+  }
   return keyword
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -430,15 +433,23 @@ Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSO
 
     const text = response.text || '';
     
-    // Extract JSON from response
-    let jsonMatch = text.match(/\[[\s\S]*\]/);
+    // Debug: Log first 500 chars of response to see what we're getting
+    console.log(`   📝 Gemini response preview: ${text.substring(0, 500)}...`);
+    
+    // Extract JSON from response - try multiple patterns
+    let jsonMatch = text.match(/\{[\s\S]*"clusters"[\s\S]*\}/); // Try cluster structure first
+    if (!jsonMatch) {
+      jsonMatch = text.match(/\[[\s\S]*\]/); // Try array format
+    }
     if (!jsonMatch) {
       jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/```\s*([\s\S]*?)\s*```/);
     }
 
     if (jsonMatch) {
       try {
-        const data = JSON.parse(jsonMatch[0] || jsonMatch[1] || '{}');
+        const jsonStr = jsonMatch[0] || jsonMatch[1] || '{}';
+        console.log(`   📋 Extracted JSON (first 300 chars): ${jsonStr.substring(0, 300)}...`);
+        const data = JSON.parse(jsonStr);
         const results: SEOResearchResult[] = [];
 
         // Handle new cluster structure
@@ -447,14 +458,21 @@ Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSO
             const clusterName = cluster.clusterName || generateSlug(cluster.pillar?.keyword || 'cluster');
             
             // Add pillar page
-            if (cluster.pillar) {
+            if (cluster.pillar && cluster.pillar.keyword) {
               const pillar = cluster.pillar;
+              // Generate varied title for pillar pages
+              const pillarTitleVariations = [
+                `${pillar.keyword} - Complete Guide 2026`,
+                `Ultimate Guide to ${pillar.keyword} in 2026`,
+                `${pillar.keyword} - Expert Review & Comparison 2026`,
+                `Top ${pillar.keyword} - Comprehensive Analysis 2026`,
+              ];
+              const pillarTitle = pillarTitleVariations[Math.floor(Math.random() * pillarTitleVariations.length)];
+              
               results.push({
                 keyword: pillar.keyword,
                 slug: generateSlug(pillar.keyword),
-                title: pillar.isPillar 
-                  ? `${pillar.keyword} - Complete Guide 2026`
-                  : `Best ${pillar.keyword} for 2026`,
+                title: pillarTitle,
                 metaDescription: `Comprehensive guide to ${pillar.keyword.toLowerCase()}. Discover the best tools, features, and recommendations.`,
                 searchVolume: pillar.searchVolume || 0,
                 competitionScore: pillar.competitionScore || 50,
@@ -469,18 +487,44 @@ Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSO
             // Add cluster pages
             if (cluster.clusters && Array.isArray(cluster.clusters)) {
               cluster.clusters.forEach((clusterPage: any, index: number) => {
+                if (!clusterPage.keyword) {
+                  return; // Skip if no keyword
+                }
+                
+                // Generate varied titles to avoid repetition
+                const titleVariations = [
+                  `Top ${clusterPage.keyword} in 2026`,
+                  `Best ${clusterPage.keyword} for 2026`,
+                  `${clusterPage.keyword} - Reviews & Comparison 2026`,
+                  `Leading ${clusterPage.keyword} - Expert Picks 2026`,
+                  `${clusterPage.keyword} - Complete Guide 2026`,
+                  `Best Rated ${clusterPage.keyword} in 2026`,
+                  `${clusterPage.keyword} - Top Picks & Reviews 2026`,
+                  `Ultimate ${clusterPage.keyword} Guide 2026`,
+                ];
+                const selectedTitle = titleVariations[Math.floor(Math.random() * titleVariations.length)];
+                
+                // Varied meta descriptions too
+                const metaDescVariations = [
+                  `Discover the best ${clusterPage.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
+                  `Explore top-rated ${clusterPage.keyword.toLowerCase()} for 2026. Expert analysis, features, pricing, and user reviews.`,
+                  `Find the perfect ${clusterPage.keyword.toLowerCase()} in 2026. Compare features, pricing, and performance of leading options.`,
+                  `Complete guide to ${clusterPage.keyword.toLowerCase()} in 2026. Reviews, comparisons, and expert recommendations.`,
+                ];
+                const selectedMetaDesc = metaDescVariations[Math.floor(Math.random() * metaDescVariations.length)];
+                
                 results.push({
                   keyword: clusterPage.keyword,
                   slug: generateSlug(clusterPage.keyword),
-                  title: `Best ${clusterPage.keyword} for 2026`,
-                  metaDescription: `Discover the best ${clusterPage.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
+                  title: selectedTitle,
+                  metaDescription: selectedMetaDesc,
                   searchVolume: clusterPage.searchVolume || 0,
                   competitionScore: clusterPage.competitionScore || 50,
                   targetKeywords: clusterPage.targetKeywords || [],
                   contentSections: [],
                   relatedToolIds: [],
                   topicCluster: clusterName,
-                  pillarTopicId: cluster.pillar ? generateSlug(cluster.pillar.keyword) : undefined,
+                  pillarTopicId: cluster.pillar?.keyword ? generateSlug(cluster.pillar.keyword) : undefined,
                   clusterRank: index + 1,
                   isPillar: false,
                 });
@@ -489,25 +533,56 @@ Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSO
           }
         } else if (Array.isArray(data)) {
           // Fallback to old format (array of keywords)
-          return data.map((r: any) => ({
-            keyword: r.keyword,
-            slug: generateSlug(r.keyword),
-            title: `Best ${r.keyword} for 2026`,
-            metaDescription: `Discover the best ${r.keyword.toLowerCase()} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
-            searchVolume: r.searchVolume || 0,
-            competitionScore: r.competitionScore || 50,
-            targetKeywords: r.targetKeywords || [],
-            contentSections: [],
-            relatedToolIds: [],
-          }));
+          const titleVariations = [
+            `Top ${'KEYWORD'} in 2026`,
+            `Best ${'KEYWORD'} for 2026`,
+            `${'KEYWORD'} - Reviews & Comparison 2026`,
+            `Leading ${'KEYWORD'} - Expert Picks 2026`,
+            `${'KEYWORD'} - Complete Guide 2026`,
+          ];
+          
+          const metaDescVariations = [
+            `Discover the best ${'KEYWORD_LOWER'} in 2026. Comprehensive guide with reviews, comparisons, and recommendations.`,
+            `Explore top-rated ${'KEYWORD_LOWER'} for 2026. Expert analysis, features, pricing, and user reviews.`,
+            `Find the perfect ${'KEYWORD_LOWER'} in 2026. Compare features, pricing, and performance of leading options.`,
+          ];
+          
+          return data
+            .filter((r: any) => r.keyword && typeof r.keyword === 'string') // Filter out invalid entries
+            .map((r: any, index: number) => {
+              const titleTemplate = titleVariations[index % titleVariations.length];
+              const metaDescTemplate = metaDescVariations[index % metaDescVariations.length];
+              
+              return {
+                keyword: r.keyword,
+                slug: generateSlug(r.keyword),
+                title: titleTemplate.replace(/KEYWORD/g, r.keyword),
+                metaDescription: metaDescTemplate.replace(/KEYWORD_LOWER/g, r.keyword.toLowerCase()),
+                searchVolume: r.searchVolume || 0,
+                competitionScore: r.competitionScore || 50,
+                targetKeywords: r.targetKeywords || [],
+                contentSections: [],
+                relatedToolIds: [],
+              };
+            });
         }
 
         console.log(`   ✓ Parsed ${results.length} keywords from ${data.clusters?.length || 0} topic clusters`);
         return results;
-      } catch (parseError) {
-        console.error('Error parsing SEO research JSON:', parseError);
+      } catch (parseError: any) {
+        console.error('   ❌ Error parsing SEO research JSON:', parseError);
+        if (parseError?.message) {
+          console.error('   Error details:', parseError.message);
+        }
+        if (parseError?.stack) {
+          console.error('   Stack:', parseError.stack.split('\n').slice(0, 3).join('\n'));
+        }
+        console.error('   📋 Raw JSON that failed to parse:', jsonMatch[0]?.substring(0, 500));
         return [];
       }
+    } else {
+      console.warn('   ⚠️  No JSON found in Gemini response');
+      console.warn('   📝 Full response (first 1000 chars):', text.substring(0, 1000));
     }
 
     return [];
@@ -671,8 +746,20 @@ Return ONLY valid JSON, no additional text.`;
 /**
  * Generate featured image using Gemini and upload to S3
  * Returns S3 URL (never base64 data URI)
+ * 
+ * Note: Font rendering is handled by Gemini. For more control over fonts and scalability,
+ * consider using @vercel/og (Next.js Open Graph) or canvas-based solutions (node-canvas, sharp)
+ * for programmatic text rendering with custom fonts.
+ * 
+ * @param keyword - The main topic/keyword for the image
+ * @param titleText - Optional title text to overlay on the image (takes priority over overlayText)
+ * @param overlayText - Optional additional overlay text (used only if titleText is not provided)
  */
-async function generateFeaturedImage(keyword: string): Promise<string | null> {
+async function generateFeaturedImage(
+  keyword: string, 
+  titleText?: string | null, 
+  overlayText?: string | null
+): Promise<string | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
@@ -681,76 +768,148 @@ async function generateFeaturedImage(keyword: string): Promise<string | null> {
   }
 
   try {
-    // S3 service is now statically imported at the top of the file
+    // Determine if we need text overlay
+    // Priority: titleText > overlayText > no overlay
+    const needsOverlay = !!(titleText || overlayText);
+    const overlayTextToUse = titleText || overlayText || null;
     
-    // Create a descriptive prompt for the featured image
-    const imagePrompt = `Create a professional, modern featured image for an SEO article about "${keyword}". 
+    // Create a simple, concise prompt for image generation
+    let imagePrompt: string;
     
-Requirements:
-- Clean, minimalist design with modern aesthetics
-- Professional color scheme (blues, purples, or tech-inspired colors)
-- 1200x630 pixels aspect ratio (landscape)
-- Abstract or conceptual representation of AI tools and technology
-- No text overlays, just visual elements
-- High quality, suitable for website header/featured image
-- Professional and trustworthy appearance
+    if (needsOverlay && overlayTextToUse) {
+      // Simple prompt with text overlay
+      imagePrompt = `Create a 1200x630 professional featured image for "${keyword}". 
+Background: Modern gradient with blues and purples, abstract tech patterns.
+Text overlay: "${overlayTextToUse}" in large, bold white text, centered.
+Style: Clean, minimalist, professional.`;
+    } else {
+      // Simple prompt without text
+      imagePrompt = `Create a 1200x630 professional featured image for "${keyword}". 
+Modern gradient background with blues and purples, abstract tech patterns representing AI tools.
+Clean, minimalist, professional style. No text.`;
+    }
 
-Style: Modern tech, minimalist, clean, professional`;
+    console.log(`   🎨 Generating AI image with Gemini (this may take 30-60 seconds)...`);
 
-    console.log(`   🎨 Generating AI image with Gemini...`);
-
-    // Use Gemini REST API for image generation (Gemini 3 Pro Image - Nano Banana Pro)
+    // Use Gemini REST API for image generation
+    // Try gemini-2.5-flash-image first (more stable), then gemini-3-pro-image-preview
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: imagePrompt
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1024,
-            }
-          }),
+      const models = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview'];
+      let response: Response | null = null;
+      let modelName = '';
+      
+      for (const model of models) {
+        modelName = model;
+        console.log(`   🔄 Trying ${model}...`);
+        
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: imagePrompt }]
+              }],
+              generationConfig: {
+                temperature: 0.8,
+                topK: 32,
+                topP: 0.95,
+                maxOutputTokens: 4096,
+              }
+            }),
+          }
+        );
+        
+        if (response.ok) {
+          break; // Success, use this model
+        } else if (response.status === 404 && models.indexOf(model) < models.length - 1) {
+          console.log(`   ⚠️  ${model} not available, trying next model...`);
+          continue; // Try next model
+        } else {
+          break; // Error, stop trying
         }
-      );
+      }
+      
+      if (!response) {
+        throw new Error('Failed to get response from any model');
+      }
 
       if (response.ok) {
         const data = await response.json();
         
-        // Extract image from response
+        // Debug: Log response structure (only if there's an issue)
+        if (!data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)) {
+          console.log(`   🔍 Response preview:`, JSON.stringify(data).substring(0, 300));
+        }
+        
+        // Extract image from response - try multiple possible structures
+        let base64Data: string | null = null;
+        let mimeType: string = 'image/png';
+        
+        // Try structure 1: candidates[0].content.parts[].inlineData
         if (data.candidates && data.candidates[0]?.content?.parts) {
           const parts = data.candidates[0].content.parts;
           const imagePart = parts.find((p: any) => p.inlineData);
           
           if (imagePart?.inlineData?.data) {
-            const base64Data = imagePart.inlineData.data; // This is already base64 string (not data URI)
-            const mimeType = imagePart.inlineData.mimeType || 'image/png';
-            
-            // Upload to S3 instead of using base64 data URI
-            console.log(`   📤 Uploading image to S3...`);
-            const filename = generateImageFilename(keyword, mimeType.split('/')[1] || 'png');
-            const s3Url = await uploadImageToS3(base64Data, filename, mimeType);
-            
-            if (s3Url) {
-              console.log(`   ✅ Image uploaded to S3: ${s3Url}`);
-              return s3Url;
-            } else {
-              console.warn(`   ⚠️  S3 upload failed, falling back to Unsplash`);
-            }
+            base64Data = imagePart.inlineData.data;
+            mimeType = imagePart.inlineData.mimeType || 'image/png';
           }
         }
         
-        console.warn(`   ⚠️  Image generation response didn't contain image data`);
+        // Try structure 2: direct inlineData
+        if (!base64Data && data.inlineData?.data) {
+          base64Data = data.inlineData.data;
+          mimeType = data.inlineData.mimeType || 'image/png';
+        }
+        
+        // Try structure 3: candidates[0].inlineData
+        if (!base64Data && data.candidates?.[0]?.inlineData?.data) {
+          base64Data = data.candidates[0].inlineData.data;
+          mimeType = data.candidates[0].inlineData.mimeType || 'image/png';
+        }
+        
+        // Try structure 4: parts array at root
+        if (!base64Data && Array.isArray(data.parts)) {
+          const imagePart = data.parts.find((p: any) => p.inlineData);
+          if (imagePart?.inlineData?.data) {
+            base64Data = imagePart.inlineData.data;
+            mimeType = imagePart.inlineData.mimeType || 'image/png';
+          }
+        }
+        
+        if (base64Data) {
+          // Upload to S3 instead of using base64 data URI
+          console.log(`   📤 Uploading image to S3 (${mimeType}, ${Math.round(base64Data.length * 0.75 / 1024)}KB)...`);
+          const filename = generateImageFilename(keyword, mimeType.split('/')[1] || 'png');
+          const s3Url = await uploadImageToS3(base64Data, filename, mimeType);
+          
+          if (s3Url) {
+            console.log(`   ✅ Image uploaded to S3: ${s3Url}`);
+            return s3Url;
+          } else {
+            console.warn(`   ⚠️  S3 upload failed, falling back to Unsplash`);
+          }
+        } else {
+          console.warn(`   ⚠️  Image generation response didn't contain image data in expected format`);
+          console.warn(`   📋 Full response keys:`, Object.keys(data));
+          if (data.candidates?.[0]) {
+            console.warn(`   📋 Candidate keys:`, Object.keys(data.candidates[0]));
+            if (data.candidates[0].finishReason) {
+              console.warn(`   📋 Finish reason: ${data.candidates[0].finishReason}`);
+              if (data.candidates[0].finishMessage) {
+                console.warn(`   📋 Finish message: ${data.candidates[0].finishMessage.substring(0, 200)}`);
+              }
+            }
+          }
+          console.warn(`   💡 Note: Gemini image generation may not be available or may require different API format`);
+          console.warn(`   💡 The model returned finishReason: ${data.candidates?.[0]?.finishReason || 'unknown'}`);
+          console.warn(`   💡 This might mean: 1) Model doesn't support image generation in this format, 2) Token limit reached, or 3) API format needs adjustment`);
+          console.warn(`   💡 Consider using @vercel/og or canvas libraries for programmatic image generation as alternative`);
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.warn(`   ⚠️  Image generation API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
@@ -932,8 +1091,16 @@ export async function generateSEOPages(): Promise<{ researched: number; generate
         }
 
         // Generate featured image
-        console.log(`   🖼️  Generating featured image...`);
-        const featuredImageUrl = await generateFeaturedImage(opportunity.keyword);
+        // Check if title text needs overlay (if title is short and descriptive, add as overlay)
+        const titleNeedsOverlay = opportunity.title && opportunity.title.length < 60;
+        const overlayText = titleNeedsOverlay ? opportunity.title : null;
+        
+        console.log(`   🖼️  Generating featured image${overlayText ? ` with title overlay: "${overlayText}"` : ''}...`);
+        const featuredImageUrl = await generateFeaturedImage(
+          opportunity.keyword, 
+          overlayText, // titleText (priority)
+          null // overlayText (fallback, not used if titleText is provided)
+        );
         console.log(`   ✅ Featured image: ${featuredImageUrl}`);
 
         // Calculate SEO score (0-100)

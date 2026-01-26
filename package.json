@@ -21,7 +21,8 @@
     "db:seed-enrichment": "tsx database/scripts/seed-tool-enrichment.ts",
     "db:check-enrichment": "tsx database/scripts/check-enrichment-status.ts",
     "db:discover-tools": "tsx database/scripts/discover-trending-tools.ts",
-    "db:discover-prompts": "tsx database/scripts/discover-prompts.ts"
+    "db:discover-prompts": "tsx database/scripts/discover-prompts.ts",
+    "daily:update": "tsx database/scripts/daily-update.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
