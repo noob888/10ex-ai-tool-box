@@ -113,31 +113,26 @@ Return JSON array:
 ]
 
 Return ONLY valid JSON.`;
-    
-    // Use Gemini with search grounding to find real news articles
+
+    // Use Gemini with Google Search grounding.
+    // IMPORTANT: For Gemini 2.0+ models, use `googleSearch` (not legacy `googleSearchRetrieval`)
+    // and pass tools via `config.tools` (per Gemini API docs).
     const response = await retryWithBackoff(async () => {
       return await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 8192,
+          tools: [{ googleSearch: {} }],
         },
-        tools: [{
-          googleSearchRetrieval: {
-            dynamicRetrievalConfig: {
-              mode: 'MODE_DYNAMIC',
-              dynamicThreshold: 0.3,
-            },
-          },
-        }],
       } as any);
     }, 3, 8000); // 3 retries, 8 second initial delay (to stay under 10 req/min)
 
     const text = response.text || '';
-    
+
     // Try to extract JSON from response
     let jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
@@ -147,8 +142,17 @@ Return ONLY valid JSON.`;
 
     if (jsonMatch) {
       try {
-        const results = JSON.parse(jsonMatch[0] || jsonMatch[1] || '[]');
-        return Array.isArray(results) ? results.slice(0, maxResults) : [];
+        const jsonStr = (jsonMatch[0] || jsonMatch[1] || '[]');
+        try {
+          const results = JSON.parse(jsonStr);
+          return Array.isArray(results) ? results.slice(0, maxResults) : [];
+        } catch (e: any) {
+          // Some grounded responses can contain unescaped control characters inside strings.
+          // Sanitize control chars and retry parsing.
+          const sanitized = jsonStr.replace(/[\u0000-\u001F]/g, ' ');
+          const results = JSON.parse(sanitized);
+          return Array.isArray(results) ? results.slice(0, maxResults) : [];
+        }
       } catch (parseError) {
         console.error('Error parsing JSON from Gemini:', parseError);
         // Fallback: try to extract structured data manually

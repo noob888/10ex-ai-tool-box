@@ -138,7 +138,7 @@ Return ONLY the JSON array, no additional text or markdown formatting.`;
 
     const result = await retryWithBackoff(async () => {
       return await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           temperature: 0.7,

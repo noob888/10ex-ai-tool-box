@@ -151,7 +151,7 @@ Return ONLY valid JSON, no additional text.`;
 
     const response = await retryWithBackoff(async () => {
       return await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         contents: prompt,
       });
     }, 3, 8000);
@@ -426,7 +426,7 @@ Ensure at least 1-2 clusters focus on top search keywords. Return ONLY valid JSO
 
     const response = await retryWithBackoff(async () => {
       return await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         contents: prompt,
       });
     }, 3, 8000);
@@ -686,7 +686,7 @@ Return ONLY valid JSON, no additional text.`;
 
     const response = await retryWithBackoff(async () => {
       return await ai.models.generateContent({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         contents: prompt,
       });
     }, 3, 8000);
