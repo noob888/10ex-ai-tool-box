@@ -10,7 +10,7 @@ import { variantGenerationSkill } from './skills/variantGeneration';
 import { complianceSpamAvoidanceSkill } from './skills/complianceSpamAvoidance';
 
 export type LeadMagnetGoal = 'Capture leads' | 'Webinar' | 'Outbound' | 'Product education' | 'Newsletter growth';
-export type Tone = 'Professional' | 'Direct' | 'Friendly' | 'Founder-style';
+export type LeadMagnetTone = 'Professional' | 'Direct' | 'Friendly' | 'Founder-style';
 export type LeadMagnetFormat = 'Checklist' | 'Playbook' | 'Report' | 'Template';
 
 export type LeadMagnetGeneratorInput = {
@@ -18,7 +18,7 @@ export type LeadMagnetGeneratorInput = {
   icpPersona: string;
   leadMagnetGoal: LeadMagnetGoal;
   topicOrPainPoint: string;
-  tone: Tone;
+  tone: LeadMagnetTone;
   companyDescription?: string;
   brandStyleNotes?: string;
 };
@@ -51,13 +51,13 @@ export function validateLeadMagnetGeneratorInput(
   const tone = asTrimmedString(body?.tone);
 
   const validGoals: LeadMagnetGoal[] = ['Capture leads', 'Webinar', 'Outbound', 'Product education', 'Newsletter growth'];
-  const validTones: Tone[] = ['Professional', 'Direct', 'Friendly', 'Founder-style'];
+  const validTones: LeadMagnetTone[] = ['Professional', 'Direct', 'Friendly', 'Founder-style'];
 
   if (!industry) return { ok: false, error: 'industry is required' };
   if (!icpPersona) return { ok: false, error: 'icpPersona is required' };
   if (!topicOrPainPoint) return { ok: false, error: 'topicOrPainPoint is required' };
   if (!validGoals.includes(leadMagnetGoal as LeadMagnetGoal)) return { ok: false, error: 'Invalid leadMagnetGoal' };
-  if (!validTones.includes(tone as Tone)) return { ok: false, error: 'Invalid tone' };
+  if (!validTones.includes(tone as LeadMagnetTone)) return { ok: false, error: 'Invalid tone' };
 
   return {
     ok: true,
@@ -66,7 +66,7 @@ export function validateLeadMagnetGeneratorInput(
       icpPersona,
       leadMagnetGoal: leadMagnetGoal as LeadMagnetGoal,
       topicOrPainPoint,
-      tone: tone as Tone,
+      tone: tone as LeadMagnetTone,
       companyDescription: asTrimmedString(body?.companyDescription),
       brandStyleNotes: asTrimmedString(body?.brandStyleNotes),
     },
