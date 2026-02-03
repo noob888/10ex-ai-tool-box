@@ -280,7 +280,7 @@ export default function EmailTemplateGeneratorPage() {
 
               {!user && (
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded border border-electric-blue/20 bg-electric-blue/5 text-electric-blue text-[10px] font-black uppercase tracking-[0.2em]">
-                  <Sparkles size={14} /> Free first run, sign up for unlimited
+                  <Sparkles size={14} /> Sign up to save outputs and generate unlimited templates
                 </div>
               )}
             </div>
@@ -290,7 +290,7 @@ export default function EmailTemplateGeneratorPage() {
                 href="/ai-agents/email-template-generator"
                 className="px-4 py-3 rounded border border-[#1f1f1f] bg-black text-[10px] font-black uppercase tracking-[0.2em] text-[#888] hover:text-white hover:border-[#333] transition-all"
               >
-                SEO Page
+                View Details
               </a>
               {!user && (
                 <button

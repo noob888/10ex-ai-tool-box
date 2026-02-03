@@ -42,7 +42,12 @@ export async function POST(request: NextRequest) {
       const repo = new AgentEventsRepository();
       await repo.insert({ id, agentId, eventType, userId, sessionId, payload });
     } catch (e) {
-      console.warn('[agent-event] db insert failed', { message: (e as any)?.message });
+      const message = (e as any)?.message || '';
+      // If the DB is reachable but the events table isn't set up yet, fail silently.
+      if (message.includes('toolbox_agent_events') && message.includes('does not exist')) {
+        return NextResponse.json({ ok: true, id });
+      }
+      console.warn('[agent-event] db insert failed', { message });
     }
   }
 

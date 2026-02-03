@@ -81,7 +81,7 @@ export default function EmailTemplateGeneratorSEOPage() {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
-      description: 'Free first run. Sign up for unlimited.',
+      description: 'Sign up for unlimited generations.',
     },
   };
 

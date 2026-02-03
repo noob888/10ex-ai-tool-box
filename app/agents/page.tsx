@@ -66,9 +66,6 @@ export default function AgentsHubPage() {
                       <Mail size={12} />
                       {agent.category}
                     </span>
-                    <span className="inline-flex items-center px-2.5 py-1 rounded bg-electric-blue/5 border border-electric-blue/20 text-[9px] font-black uppercase tracking-[0.2em] text-electric-blue">
-                      Free first run
-                    </span>
                   </div>
                   <h2 className="text-xl font-black uppercase italic tracking-tight group-hover:text-[#ddd] transition-colors">
                     {agent.name}

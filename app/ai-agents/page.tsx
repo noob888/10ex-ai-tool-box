@@ -110,7 +110,7 @@ export default function AIAgentsSEOHubPage() {
                       href={agent.seoHref}
                       className="px-4 py-3 rounded border border-[#1f1f1f] bg-black text-[10px] font-black uppercase tracking-[0.2em] text-[#888] hover:text-white hover:border-[#333] transition-all"
                     >
-                      View SEO Page
+                      View Details
                     </Link>
                     <Link
                       href={agent.runHref}

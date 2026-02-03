@@ -29,7 +29,7 @@ const nextConfig = {
       },
   // Headers for SEO
   async headers() {
-    return [
+    const headers = [
       {
         source: '/:path*',
         headers: [
@@ -52,6 +52,22 @@ const nextConfig = {
         ],
       },
     ];
+
+    // In dev, avoid stale chunk caching causing ChunkLoadError timeouts.
+    // (In prod, Next serves fingerprinted assets and caching is desirable.)
+    if (process.env.NODE_ENV !== 'production') {
+      headers.unshift({
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      });
+    }
+
+    return headers;
   },
 }
 
