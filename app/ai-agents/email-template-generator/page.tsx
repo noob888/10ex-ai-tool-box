@@ -186,9 +186,11 @@ export default function EmailTemplateGeneratorSEOPage() {
                   Subject lines
                 </h3>
                 <ul className="space-y-2 text-sm text-[#ddd]">
-                  <li>Quick question about {{company}}’s outbound</li>
-                  <li>{{first_name}}, is this a priority in Q{{quarter}}?</li>
-                  <li>Idea to reduce {{pain_point}} by 20%+</li>
+                  <li>Quick question about {'{{company}}'}’s outbound</li>
+                  <li>
+                    {'{{first_name}}'}, is this a priority in Q{'{{quarter}}'}?
+                  </li>
+                  <li>Idea to reduce {'{{pain_point}}'} by 20%+</li>
                   <li>Worth a 10-min sanity check?</li>
                 </ul>
                 <div className="pt-3">
