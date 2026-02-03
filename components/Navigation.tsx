@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Zap, LayoutGrid, Award, MessageSquare, BookOpen, ShieldCheck, Menu, X, Flame, Newspaper } from 'lucide-react';
+import { Box, Zap, LayoutGrid, Award, MessageSquare, BookOpen, ShieldCheck, Menu, X, Flame, Newspaper, Bot } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Props {
@@ -27,6 +27,11 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
 
   const handleBlogClick = () => {
     router.push('/blog');
+    setIsMobileMenuOpen(false);
+  };
+
+  const handleAgentsClick = () => {
+    router.push('/agents');
     setIsMobileMenuOpen(false);
   };
 
@@ -67,6 +72,13 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
       </div>
 
       <div className="flex items-center gap-3">
+        <button 
+          onClick={handleAgentsClick}
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest text-[#888] hover:text-white hover:bg-[#111]"
+        >
+          <Bot size={12} />
+          AI Agents
+        </button>
         <button 
           onClick={handleBlogClick}
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-[#1f1f1f] transition-all text-[10px] font-bold uppercase tracking-widest text-[#888] hover:text-white hover:bg-[#111]"
@@ -122,6 +134,13 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
                 </button>
               );
             })}
+            <button
+              onClick={handleAgentsClick}
+              className="flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold transition-all w-full text-left text-[#888] hover:text-white"
+            >
+              <Bot size={16} />
+              AI Agents
+            </button>
             <button
               onClick={handleBlogClick}
               className="flex items-center gap-3 px-4 py-3 rounded text-sm font-semibold transition-all w-full text-left text-[#888] hover:text-white"

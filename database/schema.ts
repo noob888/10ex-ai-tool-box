@@ -95,6 +95,16 @@ export interface DatabaseNews {
   updated_at: Date;
 }
 
+export interface DatabaseAgentEvent {
+  id: string;
+  agent_id: string;
+  event_type: string;
+  user_id: string | null;
+  session_id: string | null;
+  payload: any;
+  created_at: Date;
+}
+
 // SQL schema creation queries
 export const createTablesSQL = `
 -- Users table

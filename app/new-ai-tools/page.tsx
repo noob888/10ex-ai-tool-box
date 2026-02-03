@@ -20,8 +20,9 @@ export const metadata: Metadata = {
 };
 
 export default async function NewToolsPage() {
-  const toolsRepo = new ToolsRepository();
-  const allTools = await toolsRepo.findAll({ limit: 1000 });
+  const allTools: Tool[] = process.env.DATABASE_URL
+    ? await new ToolsRepository().findAll({ limit: 1000 })
+    : (await import('@/data/toolsData')).toolsDataset;
   
   // Filter tools from last 30 days
   const thirtyDaysAgo = new Date();
