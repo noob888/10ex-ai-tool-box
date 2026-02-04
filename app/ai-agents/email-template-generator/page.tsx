@@ -81,7 +81,7 @@ export default function EmailTemplateGeneratorSEOPage() {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
-      description: 'Free first run. Sign up for unlimited.',
+      description: 'Generate high-performing email templates tailored to your target persona and tone.',
     },
   };
 
@@ -116,7 +116,7 @@ export default function EmailTemplateGeneratorSEOPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/agents/email-template-generator"
+                href="/ai-agents/email-template-generator"
                 className="bg-white text-black px-6 py-4 rounded font-black text-xs uppercase tracking-widest hover:bg-[#eee] transition-all flex items-center gap-2"
               >
                 Try Free Agent <ArrowRight size={14} />
@@ -249,7 +249,7 @@ Open to a quick 10 minutes next week to see if it’s relevant?`}
               </p>
             </div>
             <Link
-              href="/agents/email-template-generator"
+              href="/ai-agents/email-template-generator"
               className="bg-white text-black px-6 py-4 rounded font-black text-xs uppercase tracking-widest hover:bg-[#eee] transition-all flex items-center gap-2"
             >
               Run Agent <ArrowRight size={14} />

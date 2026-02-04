@@ -1,0 +1,2 @@
+# AI visibility for tools.10ex.ai
+# Full LLM-oriented manifest: https://tools.10ex.ai/llms.txt

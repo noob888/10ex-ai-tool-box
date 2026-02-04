@@ -114,7 +114,7 @@ export const StackBuilder: React.FC<Props> = ({ tools, onToolClick, onVote, onLi
               <Box className="text-white" size={20} />
               AI Tool Builder
             </h2>
-            <span className="text-[10px] font-bold text-[#444] uppercase tracking-widest hidden sm:inline">600+ Assets Indexed</span>
+            <span className="text-[10px] font-bold text-[#444] uppercase tracking-widest hidden sm:inline">{tools.length > 0 ? tools.length : 600}+ Assets Indexed</span>
           </div>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#444]" size={16} />

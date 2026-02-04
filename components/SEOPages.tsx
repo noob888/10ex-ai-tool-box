@@ -6,12 +6,15 @@ import { ToolCard } from './ToolCard';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+const TOOLS_COUNT_FALLBACK = 600;
+
 interface Props {
   keyword: string;
   targetTool?: Tool;
   alternatives?: Tool[]; // Made optional - will fetch client-side
   relatedToolIds?: string[]; // Pass IDs instead of full objects
   category?: string; // For category-based queries
+  toolsCount?: number; // Total catalog count for copy (fallback 600)
   onBack?: () => void;
   onToolClick?: (tool: Tool) => void;
   onVote?: (tool: Tool) => void;
@@ -150,7 +153,7 @@ function formatInlineText(text: string): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : text;
 }
 
-export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, relatedToolIds, category, onBack, onToolClick, onVote, onLike, onStar, featuredImageUrl, introduction, sections }) => {
+export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives, relatedToolIds, category, toolsCount, onBack, onToolClick, onVote, onLike, onStar, featuredImageUrl, introduction, sections }) => {
   const router = useRouter();
   const [tools, setTools] = useState<Tool[]>(alternatives || []);
   const [loading, setLoading] = useState(!alternatives || alternatives.length === 0);
@@ -252,7 +255,7 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
           </div>
         ) : (
         <p className="text-[#888] text-base leading-relaxed max-w-3xl">
-          Don't settle for marketing hype. We audited 600+ AI tools to bring you the top performing {keyword.toLowerCase()} based on latency, output quality, and cost-efficiency.
+          Don't settle for marketing hype. We audited {(toolsCount ?? TOOLS_COUNT_FALLBACK)}+ AI tools to bring you the top performing {keyword.toLowerCase()} based on latency, output quality, and cost-efficiency.
         </p>
         )}
             <div className="flex items-center gap-4 text-[10px] font-bold text-[#444] uppercase tracking-widest">
@@ -320,7 +323,7 @@ export const SEOSection: React.FC<Props> = ({ keyword, targetTool, alternatives,
             <div className="p-8 rounded-lg border border-[#1f1f1f] bg-[#050505] space-y-6">
               <h2 className="text-xl font-bold">Why choose the right {keyword.toLowerCase()}?</h2>
               <p className="text-sm text-[#666] leading-relaxed">
-                Finding the perfect {keyword.toLowerCase()} can make or break your workflow. We've analyzed 600+ tools to help you find the best match based on performance, pricing, and features. Our curated list ensures you get tools that actually deliver results.
+                Finding the perfect {keyword.toLowerCase()} can make or break your workflow. We've analyzed {(toolsCount ?? TOOLS_COUNT_FALLBACK)}+ tools to help you find the best match based on performance, pricing, and features. Our curated list ensures you get tools that actually deliver results.
               </p>
               {tools.length >= 2 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

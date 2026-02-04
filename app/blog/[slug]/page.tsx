@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { SEOSection } from '@/components/SEOPages';
 import { ToolsRepository } from '@/database/repositories/tools.repository';
 import { SEOPagesRepository } from '@/database/repositories/seoPages.repository';
+import { getToolsCount } from '@/lib/toolsCount';
 import { Category } from '@/types';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 
@@ -76,7 +77,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   } else {
     keyword = slugToKeyword[slug] || slug.replace(/-/g, ' ');
     title = `Best ${keyword} for 2026`;
-    description = `Discover the best ${keyword.toLowerCase()} in 2026. We've audited 600+ AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`;
+    const toolsCount = await getToolsCount();
+    const toolsLabel = toolsCount >= 600 ? `${toolsCount}+` : String(toolsCount);
+    description = `Discover the best ${keyword.toLowerCase()} in 2026. We've audited ${toolsLabel} AI tools to bring you the top performing options based on latency, output quality, and cost-efficiency.`;
   }
   
   return {

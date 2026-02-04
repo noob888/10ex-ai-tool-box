@@ -1,0 +1,51 @@
+# AI Tool Box (10EX.AI)
+
+> A curated directory of 600 AI tools for writing, design, coding, marketing, and more—with comparisons, programmatic SEO guides, and free micro-agents.
+
+AI Tool Box is the definitive programmatic directory for discovering and comparing AI tools in 2026. The site is organized into category hubs, individual tool pages, SEO-optimized blog guides, and interactive agents. Use the sections below to find the most relevant pages for your query.
+
+## Core pages
+
+- [Home](https://tools.10ex.ai/)
+- [AI Agents](https://tools.10ex.ai/ai-agents) : Email and lead-magnet micro-agents
+- [Agents (legacy)](https://tools.10ex.ai/agents)
+- [Trending tools](https://tools.10ex.ai/trending)
+- [Free AI tools](https://tools.10ex.ai/free-ai-tools)
+- [New AI tools](https://tools.10ex.ai/new-ai-tools)
+- [Stack builder](https://tools.10ex.ai/stack)
+- [Prompt library](https://tools.10ex.ai/prompts)
+- [AI news](https://tools.10ex.ai/news)
+- [Blog & guides](https://tools.10ex.ai/blog)
+
+## Programmatic SEO guides (blog)
+
+- [Top ChatGPT alternatives in 2026](https://tools.10ex.ai/blog/top-chatgpt-alternatives-in-2026)
+- [Best AI writing tools 2026](https://tools.10ex.ai/blog/best-ai-writing-tools-2026)
+- [Best AI coding tools 2026](https://tools.10ex.ai/blog/best-ai-coding-tools-2026)
+- [AI research tools 2026](https://tools.10ex.ai/blog/ai-research-tools-2026)
+- [Free AI tools for startups](https://tools.10ex.ai/blog/free-ai-tools-for-startups)
+- [Best AI tools comparison](https://tools.10ex.ai/blog/best-ai-tools-comparison)
+- [AI design tools for creators](https://tools.10ex.ai/blog/ai-design-tools-for-creators)
+- [AI video generation tools](https://tools.10ex.ai/blog/ai-video-generation-tools)
+- [AI marketing tools for business](https://tools.10ex.ai/blog/ai-marketing-tools-for-business)
+- [AI sales tools & outreach](https://tools.10ex.ai/blog/ai-sales-tools-outreach)
+- [AI productivity tools](https://tools.10ex.ai/blog/ai-productivity-tools)
+- [AI automation tools](https://tools.10ex.ai/blog/ai-automation-tools)
+
+## Category hubs (best AI for X)
+
+- [Best AI for writing](https://tools.10ex.ai/best-ai-for/writing)
+- [Best AI for coding](https://tools.10ex.ai/best-ai-for/coding)
+- [Best AI for design](https://tools.10ex.ai/best-ai-for/design)
+- [Best AI for marketing](https://tools.10ex.ai/best-ai-for/marketing)
+- [Best AI for productivity](https://tools.10ex.ai/best-ai-for/productivity)
+- [Best AI for research](https://tools.10ex.ai/best-ai-for/research)
+- [Best AI for video](https://tools.10ex.ai/best-ai-for/video)
+- [Best AI for sales](https://tools.10ex.ai/best-ai-for/sales)
+- [Best AI for automation](https://tools.10ex.ai/best-ai-for/automation)
+
+## Optional
+
+- [Leaderboards](https://tools.10ex.ai/leaderboards)
+- [Sitemap (XML)](https://tools.10ex.ai/sitemap.xml) : Full list of indexable URLs for crawlers
+- [Robots](https://tools.10ex.ai/robots.txt) : Crawl rules

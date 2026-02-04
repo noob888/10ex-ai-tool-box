@@ -66,6 +66,34 @@ Create these files in `/public`:
 2. Add site and verify
 3. Submit sitemap
 
+### 5. If Your Site Is Not Getting Indexed (Search Console)
+
+- **Submit the sitemap**: In GSC → Sitemaps, add `https://tools.10ex.ai/sitemap.xml` and request indexing.
+- **Request indexing for key URLs**: Use [URL Inspection](https://support.google.com/webmasters/answer/9012289) for the homepage and a few important pages (e.g. `/blog/best-ai-writing-tools-2026`) and click “Request indexing”.
+- **Check “Why pages aren’t indexed”**: In GSC → Pages → “Why pages aren’t indexed” to see if Google is crawling but not indexing (e.g. “Crawled – currently not indexed”). Fix any errors (noindex, 404s, low quality).
+- **Allow time**: New or low-authority sites can take days or weeks to index; keep the sitemap submitted and internal links strong.
+- **Homepage content**: The homepage includes a server-rendered SEO shell (H1 + links) so crawlers get indexable content even before JS loads.
+
+### 6. AI / LLM Visibility (llms.txt and ai.txt)
+
+- **`/llms.txt`**: A curated manifest for LLMs and AI crawlers (content curation format). Lists core pages, programmatic SEO guides, and category hubs. Served from `public/llms.txt`.
+- **`/ai.txt`**: Optional alias that points to the same concept; some crawlers look for `ai.txt`. You can add `public/ai.txt` with a one-line pointer to `llms.txt` if desired.
+- **Directories**: Consider submitting your site to [llmstxt.site](https://llmstxt.site) or [directory.llmstxt.cloud](https://directory.llmstxt.cloud) so LLM tools can discover your manifest.
+
+### 7. Fixing “Why pages aren’t indexed” in GSC
+
+| GSC reason | What it means | What we did / what you should do |
+|------------|----------------|-----------------------------------|
+| **Alternate page with proper canonical tag** | Page has a canonical pointing to another URL; Google correctly doesn’t index it. | Expected. If you want a page indexed, set its canonical to itself or remove the canonical. |
+| **Not found (404)** | URLs in sitemap or backlinks return 404. | In GSC, open the report and note the 8 URLs. Remove them from the sitemap if they’re wrong, or add redirects/real pages. Ensure `manifest.json` is served (Next.js serves it from `app/manifest.ts` at `/manifest.json`). |
+| **Duplicate without user-selected canonical** | Two+ URLs with same/similar content and no canonical. | We consolidated agents: **`/agents` and `/agents/*` now 301 redirect to `/ai-agents` and `/ai-agents/*`**, and were removed from the sitemap. Only `/ai-agents/*` is in the sitemap. |
+| **Page with redirect** | The URL redirects (301/302); Google indexes the destination, not the redirect URL. | Usually fine. If the redirect is wrong, fix the target in middleware or `next.config.js`. |
+| **Crawled – currently not indexed** | Google crawled but chose not to index (e.g. low value, thin/duplicate). | Improve unique content per URL; strengthen internal links from homepage and key hubs; request indexing for top URLs. Over time, quality and authority help. |
+| **Duplicate, Google chose different canonical than user** | We set a canonical but Google preferred another URL. | We reduced duplicates by redirecting `/agents` → `/ai-agents`. Ensure every important page has a **self-referencing canonical** (pointing to its own URL) and that there’s only one URL per piece of content. |
+| **Discovered – currently not indexed** | URL is known but not yet crawled. | Request indexing for key URLs in URL Inspection; resubmit sitemap; wait for crawl budget. |
+
+After deploying: resubmit the sitemap in GSC and, if needed, use “Validate fix” for the affected reasons so Google recrawls.
+
 ## SEO Pages Available
 
 The following SEO-optimized pages are automatically generated:

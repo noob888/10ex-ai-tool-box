@@ -31,7 +31,7 @@ export const Navigation: React.FC<Props> = ({ activeTab, setActiveTab, fatigueMo
   };
 
   const handleAgentsClick = () => {
-    router.push('/agents');
+    router.push('/ai-agents');
     setIsMobileMenuOpen(false);
   };
 

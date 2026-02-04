@@ -26,6 +26,17 @@ const queryToSlugMap: Record<string, string> = {
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Consolidate /agents → /ai-agents (canonical) to fix duplicate content in GSC
+  if (pathname === '/agents' || pathname === '/agents/') {
+    return NextResponse.redirect(new URL('/ai-agents', request.url), 301);
+  }
+  if (pathname === '/agents/email-template-generator' || pathname === '/agents/email-template-generator/') {
+    return NextResponse.redirect(new URL('/ai-agents/email-template-generator', request.url), 301);
+  }
+  if (pathname === '/agents/lead-magnet-generator' || pathname === '/agents/lead-magnet-generator/') {
+    return NextResponse.redirect(new URL('/ai-agents/lead-magnet-generator', request.url), 301);
+  }
+
   // Redirect old /seo/ URLs to /blog/
   if (pathname.startsWith('/seo/')) {
     const slug = pathname.replace('/seo/', '');

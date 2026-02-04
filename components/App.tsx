@@ -376,6 +376,7 @@ const App: React.FC = () => {
           keyword={seoTarget.keyword}
           targetTool={targetTool}
           alternatives={filteredToolsForSEO}
+          toolsCount={toolsDataset.length > 0 ? toolsDataset.length : 600}
           onBack={() => {
             setSeoTarget(null);
             setActiveTab('discover');
@@ -558,11 +559,6 @@ const App: React.FC = () => {
               </>
             )}
 
-            {/* Category Navigation - Always Visible */}
-            <div className="py-8 border-b border-[#1f1f1f]">
-              <CategoryNavigation />
-            </div>
-
             {!fatigueMode && (
               <>
 
@@ -703,7 +699,7 @@ const App: React.FC = () => {
         <ToolListStructuredData
           tools={toolsDataset}
           title="Best AI Tools Directory 2026"
-          description="Comprehensive directory of 600+ AI tools including ChatGPT alternatives, writing tools, design tools, and more."
+          description={`Comprehensive directory of ${toolsDataset.length}+ AI tools including ChatGPT alternatives, writing tools, design tools, and more.`}
         />
       )}
       <div className="min-h-screen pt-20 pb-16 px-4">
@@ -773,7 +769,14 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
 
-      <footer className="mt-24 border-t border-[#1f1f1f] pt-16 pb-12 max-w-6xl mx-auto">
+      {/* Browse by Category (moved above footer) */}
+      {activeTab === 'discover' && (
+        <div className="mt-24 max-w-6xl mx-auto px-4">
+          <CategoryNavigation />
+        </div>
+      )}
+
+      <footer className={`${activeTab === 'discover' ? 'mt-16' : 'mt-24'} border-t border-[#1f1f1f] pt-16 pb-12 max-w-6xl mx-auto`}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-16">
           <div className="space-y-6">
             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#eee]">AI Tool Box</h4>

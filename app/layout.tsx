@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { LoadingProvider } from '@/components/LoadingProvider';
+import { TOOLS_COUNT_FALLBACK } from '@/lib/toolsCount';
 
 export const metadata: Metadata = {
   title: {
     default: 'AI Tool Box - Best AI Tools Directory 2026',
     template: '%s | AI Tool Box'
   },
-  description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including writing tools, design tools, coding assistants, and more. Compare, review, and find your perfect AI stack.',
+  description: `Discover the best AI tools in 2026. Comprehensive directory of ${TOOLS_COUNT_FALLBACK}+ AI tools including writing tools, design tools, coding assistants, and more. Compare, review, and find your perfect AI stack.`,
   keywords: [
     'AI tools',
     'AI tool directory',
@@ -34,7 +35,7 @@ export const metadata: Metadata = {
     url: '/',
     siteName: 'AI Tool Box',
     title: 'AI Tool Box - Best AI Tools Directory 2026',
-    description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools including writing tools, design tools, and more.',
+    description: `Discover the best AI tools in 2026. Comprehensive directory of ${TOOLS_COUNT_FALLBACK}+ AI tools including writing tools, design tools, and more.`,
     images: [
       {
         url: '/og-image.png',
@@ -47,7 +48,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'AI Tool Box - Best AI Tools Directory 2026',
-    description: 'Discover the best AI tools in 2026. Comprehensive directory of 600+ AI tools.',
+    description: `Discover the best AI tools in 2026. Comprehensive directory of ${TOOLS_COUNT_FALLBACK}+ AI tools.`,
     images: ['/og-image.png'],
     creator: '@10exai',
   },
@@ -90,7 +91,7 @@ export default function RootLayout({
               "@type": "WebSite",
               "name": "AI Tool Box",
               "url": process.env.NEXT_PUBLIC_SITE_URL || "https://tools.10ex.ai",
-              "description": "The definitive AI tool directory curated for solo-hackers. Discover 600+ AI tools including writing tools, design tools, and more.",
+              "description": `The definitive AI tool directory curated for solo-hackers. Discover ${TOOLS_COUNT_FALLBACK}+ AI tools including writing tools, design tools, and more.`,
               "publisher": {
                 "@type": "Organization",
                 "name": "10EX.AI",

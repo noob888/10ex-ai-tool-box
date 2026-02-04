@@ -50,6 +50,15 @@ export class ToolsRepository {
   }
 
   /**
+   * Get total number of tools (for SEO copy and UI)
+   */
+  async count(): Promise<number> {
+    const pool = getDatabasePool();
+    const result = await pool.query('SELECT COUNT(*)::int AS count FROM toolbox_tools');
+    return result.rows[0]?.count ?? 0;
+  }
+
+  /**
    * Get tool by ID
    */
   async findById(id: string): Promise<Tool | null> {

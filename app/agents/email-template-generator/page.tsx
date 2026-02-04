@@ -102,6 +102,7 @@ export default function EmailTemplateGeneratorPage() {
   });
 
   const [output, setOutput] = useState<EmailGeneratorOutput | null>(null);
+  const [outputMeta, setOutputMeta] = useState<{ isFallback: boolean; provider?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -167,6 +168,7 @@ export default function EmailTemplateGeneratorPage() {
   const handleGenerate = async () => {
     setError(null);
     setOutput(null);
+    setOutputMeta(null);
 
     if (!canRun) {
       setShowAuthModal(true);
@@ -205,6 +207,11 @@ export default function EmailTemplateGeneratorPage() {
       }
 
       setOutput(data.output as EmailGeneratorOutput);
+      setOutputMeta(
+        data.meta != null
+          ? { isFallback: !!data.meta.isFallback, provider: data.meta.provider }
+          : null
+      );
 
       if (!user) {
         const nextRuns = Math.max(0, freeRunsUsed) + 1;
@@ -278,11 +285,11 @@ export default function EmailTemplateGeneratorPage() {
                 Generate high-performing emails with multiple subject lines, short + long versions, CTA variants, and a follow-up suggestion.
               </p>
 
-              {!user && (
+              {/* {!user && (
                 <div className="inline-flex items-center gap-2 px-3 py-2 rounded border border-electric-blue/20 bg-electric-blue/5 text-electric-blue text-[10px] font-black uppercase tracking-[0.2em]">
                   <Sparkles size={14} /> Free first run, sign up for unlimited
                 </div>
-              )}
+              )} */}
             </div>
 
             <div className="flex items-center gap-2">
@@ -290,7 +297,7 @@ export default function EmailTemplateGeneratorPage() {
                 href="/ai-agents/email-template-generator"
                 className="px-4 py-3 rounded border border-[#1f1f1f] bg-black text-[10px] font-black uppercase tracking-[0.2em] text-[#888] hover:text-white hover:border-[#333] transition-all"
               >
-                SEO Page
+                View Details
               </a>
               {!user && (
                 <button
@@ -437,9 +444,27 @@ export default function EmailTemplateGeneratorPage() {
             <div className="p-6 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] space-y-5">
               <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
                 <div className="space-y-1">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#444]">
-                    Output
-                  </h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#444]">
+                      Output
+                    </h2>
+                    {output && outputMeta && (
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          outputMeta.isFallback
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : 'bg-electric-blue/10 text-electric-blue border border-electric-blue/20'
+                        }`}
+                        title={outputMeta.provider ?? undefined}
+                      >
+                        {outputMeta.isFallback ? (
+                          <>Preview (fallback)</>
+                        ) : (
+                          <>Generated with Claude</>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-[#666] font-medium">
                     Uses placeholders like <span className="font-mono text-[#888]">{'{{first_name}}'}</span> so you can personalize fast.
                   </p>

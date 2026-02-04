@@ -23,8 +23,8 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get('user-agent') || null;
   const userId = typeof body?.userId === 'string' ? body.userId : null;
 
-  // If Claude isn't configured, return a deterministic fallback (still useful for users & local dev).
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = (typeof process.env.ANTHROPIC_API_KEY === 'string' && process.env.ANTHROPIC_API_KEY.trim()) || '';
+  if (!apiKey) {
     const output = generateEmailTemplateFallback(validated.value);
     return NextResponse.json({
       output,
@@ -41,12 +41,16 @@ export async function POST(request: NextRequest) {
       meta: { requestId, isFallback: false, provider: 'anthropic', model: result.model, usage: result.usage },
     });
   } catch (error: any) {
+    const message = error?.message ?? String(error);
+    const status = error?.status ?? error?.statusCode;
     console.error('[agents/email-template-generator] error', {
       requestId,
-      message: error?.message,
+      message,
+      status,
+      code: error?.code,
+      name: error?.name,
     });
 
-    // If the model returns non-JSON or partial fields, degrade gracefully.
     const output = generateEmailTemplateFallback(validated.value);
     return NextResponse.json(
       {

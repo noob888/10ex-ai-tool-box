@@ -48,6 +48,12 @@ async function runMigrations() {
     await pool.query(toolEnrichmentSQL);
     console.log('✓ Tool enrichment fields migration completed');
 
+    // Run agent events table migration
+    const agentEventsPath = join(process.cwd(), 'database/migrations/007_add_agent_events_table.sql');
+    const agentEventsSQL = readFileSync(agentEventsPath, 'utf-8');
+    await pool.query(agentEventsSQL);
+    console.log('✓ Agent events table migration completed');
+
     console.log('All migrations completed successfully!');
   } catch (error) {
     console.error('Migration failed:', error);

@@ -38,7 +38,7 @@ const agents = [
     category: 'Sales & Outreach',
     headline: 'Generate sales-ready emails that get replies.',
     seoHref: '/ai-agents/email-template-generator',
-    runHref: '/agents/email-template-generator',
+    runHref: '/ai-agents/email-template-generator',
     icon: Mail,
   },
   {
@@ -47,7 +47,7 @@ const agents = [
     category: 'Demand Gen',
     headline: 'Generate a complete lead magnet + landing page copy + nurture email.',
     seoHref: '/ai-agents/lead-magnet-generator',
-    runHref: '/agents/lead-magnet-generator',
+    runHref: '/ai-agents/lead-magnet-generator',
     icon: FileText,
   },
 ];
@@ -122,7 +122,7 @@ export default function AIAgentsSEOHubPage() {
                       href={agent.seoHref}
                       className="px-4 py-3 rounded border border-[#1f1f1f] bg-black text-[10px] font-black uppercase tracking-[0.2em] text-[#888] hover:text-white hover:border-[#333] transition-all"
                     >
-                      View SEO Page
+                      View Details
                     </Link>
                     <Link
                       href={agent.runHref}

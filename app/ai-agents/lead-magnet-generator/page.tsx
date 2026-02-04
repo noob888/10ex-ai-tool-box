@@ -80,7 +80,7 @@ export default function LeadMagnetGeneratorSEOPage() {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
-      description: 'Free first run. Sign up for unlimited.',
+      description: 'Generate a complete lead magnet in minutes—title options, format variants (checklist/playbook/report/template), a full draft, landing page copy, CTAs + form prompts, and a nurture email—tailored to your ICP.',
     },
   };
 
@@ -116,7 +116,7 @@ export default function LeadMagnetGeneratorSEOPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/agents/lead-magnet-generator"
+                href="/ai-agents/lead-magnet-generator"
                 className="bg-white text-black px-6 py-4 rounded font-black text-xs uppercase tracking-widest hover:bg-[#eee] transition-all flex items-center gap-2"
               >
                 Generate Free Lead Magnet <ArrowRight size={14} />
@@ -219,7 +219,7 @@ TOP 5 FAILURE MODES (AND FIXES)
               </p>
             </div>
             <Link
-              href="/agents/lead-magnet-generator"
+              href="/ai-agents/lead-magnet-generator"
               className="bg-white text-black px-6 py-4 rounded font-black text-xs uppercase tracking-widest hover:bg-[#eee] transition-all flex items-center gap-2"
             >
               Run Agent <ArrowRight size={14} />
