@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowUpRight, Bot, Mail } from 'lucide-react';
+import { ArrowUpRight, Bot, FileText, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'AI Agents | Micro Agents Marketplace by 10ex',
@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     'sales email templates',
     'outreach email generator',
     'follow up email generator',
+    'lead magnet generator',
+    'demand gen lead magnet',
+    'landing page copy generator',
   ],
   alternates: {
     canonical: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://tools.10ex.ai'}/ai-agents`,
@@ -37,6 +40,15 @@ const agents = [
     seoHref: '/ai-agents/email-template-generator',
     runHref: '/agents/email-template-generator',
     icon: Mail,
+  },
+  {
+    id: 'lead-magnet-generator',
+    name: 'Lead Magnet Generator',
+    category: 'Demand Gen',
+    headline: 'Generate a complete lead magnet + landing page copy + nurture email.',
+    seoHref: '/ai-agents/lead-magnet-generator',
+    runHref: '/agents/lead-magnet-generator',
+    icon: FileText,
   },
 ];
 

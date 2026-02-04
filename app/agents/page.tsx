@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowUpRight, Bot, Mail } from 'lucide-react';
+import { ArrowUpRight, Bot, FileText, Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'AI Agents Hub | 10ex Tools',
@@ -21,6 +21,7 @@ type AgentCard = {
   outcome: string;
   timeSaved: string;
   href: string;
+  icon: any;
 };
 
 const agents: AgentCard[] = [
@@ -31,6 +32,16 @@ const agents: AgentCard[] = [
     outcome: 'Generate sales-ready emails that get replies.',
     timeSaved: 'Saves 20–40 min per email',
     href: '/agents/email-template-generator',
+    icon: Mail,
+  },
+  {
+    id: 'lead-magnet-generator',
+    name: 'Lead Magnet Generator',
+    category: 'Demand Gen',
+    outcome: 'Generate a full lead magnet + landing page copy + nurture email.',
+    timeSaved: 'Saves 2–5 hours per asset',
+    href: '/agents/lead-magnet-generator',
+    icon: FileText,
   },
 ];
 
@@ -53,17 +64,19 @@ export default function AgentsHubPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {agents.map(agent => (
-            <Link
-              key={agent.id}
-              href={agent.href}
-              className="group block p-6 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] hover:bg-black transition-all"
-            >
+          {agents.map(agent => {
+            const Icon = agent.icon;
+            return (
+              <Link
+                key={agent.id}
+                href={agent.href}
+                className="group block p-6 rounded-lg border border-[#1f1f1f] bg-[#0a0a0a] hover:bg-black transition-all"
+              >
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-black border border-[#1f1f1f] text-[9px] font-black uppercase tracking-[0.2em] text-[#666]">
-                      <Mail size={12} />
+                      <Icon size={12} />
                       {agent.category}
                     </span>
                     <span className="inline-flex items-center px-2.5 py-1 rounded bg-electric-blue/5 border border-electric-blue/20 text-[9px] font-black uppercase tracking-[0.2em] text-electric-blue">
@@ -88,8 +101,9 @@ export default function AgentsHubPage() {
                   Run Agent
                 </span>
               </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="p-6 rounded-lg border border-[#1f1f1f] bg-black">
